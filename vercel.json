@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "buildCommand": "cd hospital_crm/frontend && npm install && npm run build",
+  "outputDirectory": "hospital_crm/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/$1"
+    }
+  ],
+  "env": {
+    "ENVIRONMENT": "production",
+    "DATABASE_URL": "postgresql://postgres.vdwpxcdpzhreonutitrc:cmW7zEtAJH5ziFyo@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres",
+    "SUPABASE_URL": "https://vdwpxcdpzhreonutitrc.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkd3B4Y2RwemhyZW9udXRpdHJjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY3OTQ0OSwiZXhwIjoyMTAyMjU1NDQ5fQ.e_H5V4N7x94W5iV8d-aU9QW6zE2oP4Y3bK8X1jM0rNs",
+    "SECRET_KEY": "santasa-ivf-lead-management-crm-super-secure-production-jwt-key-2026",
+    "CORS_ORIGINS": "*"
+  }
+}

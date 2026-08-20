@@ -1,0 +1,24 @@
+name: Keep Supabase Active 24/7
+
+on:
+  schedule:
+    # Runs every 2 days at 00:00 UTC
+    - cron: '0 0 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres.vdwpxcdpzhreonutitrc:cmW7zEtAJH5ziFyo@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres' }}
+        run: |
+          python -c "
+          import psycopg2
+          conn = psycopg2.connect('$DATABASE_URL')
+          cur = conn.cursor()
+          cur.execute('SELECT 1;')
+          print('Supabase heartbeat OK:', cur.fetchone())
+          conn.close()
+          "
