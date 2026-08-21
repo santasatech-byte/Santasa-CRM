@@ -2,8 +2,9 @@
 Hospital CRM - Application Configuration
 Pydantic Settings with full environment variable support and validation.
 """
-from typing import List, Optional
-from pydantic import Field
+from typing import List, Optional, Union
+import json
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,7 +26,22 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: Union[List[str], str] = ["*"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            v_clean = v.strip()
+            if v_clean.startswith("[") and v_clean.endswith("]"):
+                try:
+                    return json.loads(v_clean)
+                except Exception:
+                    pass
+            if "," in v_clean:
+                return [i.strip() for i in v_clean.split(",") if i.strip()]
+            return [v_clean]
+        return v
 
     # Database
     DATABASE_URL: str = "postgresql://postgres.vdwpxcdpzhreonutitrc:cmW7zEtAJH5ziFyo@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
