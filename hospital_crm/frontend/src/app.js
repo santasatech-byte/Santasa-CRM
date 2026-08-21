@@ -3,7 +3,7 @@
  * Fully dynamic: Directly integrated with FastAPI & Supabase PostgreSQL & Audio Storage
  */
 
-let API_BASE = localStorage.getItem("crm_api_url") || window.VITE_API_URL || "/api/v1";
+let API_BASE = localStorage.getItem("crm_api_url") || "https://santasa-crm.onrender.com/api/v1";
 
 let authToken = localStorage.getItem("supabase_access_token") || localStorage.getItem("crm_auth_token") || null;
 let refreshToken = localStorage.getItem("supabase_refresh_token") || null;
