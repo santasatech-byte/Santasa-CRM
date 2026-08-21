@@ -137,7 +137,7 @@ def create_app() -> FastAPI:
     # ---------------------------------------------------------
     import os
     from fastapi.staticfiles import StaticFiles
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, JSONResponse
 
     base_dirs = [
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")),
