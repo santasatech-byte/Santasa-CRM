@@ -19,3 +19,6 @@ dependencies = [
     "email-validator>=2.1.0",
     "requests>=2.31.0"
 ]
+
+[tool.vercel]
+entrypoint = "hospital_crm.backend.app.main:app"
