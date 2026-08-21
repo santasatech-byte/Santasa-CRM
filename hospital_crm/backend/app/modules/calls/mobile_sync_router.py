@@ -7,7 +7,7 @@ import os
 import shutil
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status, HTTPException
+from fastapi import APIRouter, Depends, Request, status, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -29,29 +29,21 @@ MEDIA_DIR = LOCAL_MEDIA_DIR
 @router.api_route("/call-log", methods=["GET", "POST"], status_code=status.HTTP_201_CREATED)
 async def sync_mobile_call_log(
     request: Request,
-    phone_number: Optional[str] = None,
-    direction: Optional[str] = None,
-    duration_seconds: Optional[int] = None,
-    call_timestamp: Optional[str] = None,
-    notes: Optional[str] = None,
-    phone: Optional[str] = None,
-    caller: Optional[str] = None,
-    number: Optional[str] = None,
-    duration: Optional[int] = None,
-    call_type: Optional[str] = None,
-    recording_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     """
     Universal mobile sync endpoint:
     Accepts GET, POST (Form-data, URL-encoded, Query params, or JSON body) from MacroDroid, Automate, or Tasker.
+    Zero-422 error guarantee: All fields are parsed dynamically.
     """
     # 1. Gather all inputs from query parameters
     raw_data = dict(request.query_params)
-    
+    file_bytes = None
+    file_name = None
+    content_type = request.headers.get("content-type", "")
+
     # 2. Check JSON payload if applicable
     try:
-        content_type = request.headers.get("content-type", "")
         if "application/json" in content_type:
             json_body = await request.json()
             if isinstance(json_body, dict):
@@ -59,24 +51,36 @@ async def sync_mobile_call_log(
     except Exception:
         pass
 
-    # 3. Check Form body if applicable
+    # 3. Check Form / Multipart body if applicable
     try:
-        form_body = await request.form()
-        for k, v in form_body.items():
-            if isinstance(v, str):
-                raw_data[k] = v
+        if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+            form_data = await request.form()
+            for k, v in form_data.items():
+                if hasattr(v, "file") and hasattr(v, "filename") and v.filename:
+                    # UploadFile object
+                    try:
+                        file_bytes = await v.read()
+                        file_name = v.filename
+                    except Exception:
+                        pass
+                elif isinstance(v, str):
+                    raw_data[k] = v
     except Exception:
         pass
 
     # Extract phone number
-    raw_phone = (
+    raw_phone = str(
         raw_data.get("phone_number")
         or raw_data.get("phone")
         or raw_data.get("caller")
         or raw_data.get("number")
         or raw_data.get("from_number")
-        or phone_number or phone or caller or number or ""
+        or ""
     ).strip()
+
+    # Clean phone if placeholder passed
+    if "[" in raw_phone or "call_num" in raw_phone:
+        raw_phone = ""
 
     if not raw_phone:
         return {
@@ -85,30 +89,23 @@ async def sync_mobile_call_log(
         }
 
     # Extract duration
-    raw_dur = (
-        raw_data.get("duration_seconds")
-        or raw_data.get("duration")
-        or duration_seconds
-        or duration
-        or 0
-    )
+    raw_dur = str(raw_data.get("duration_seconds") or raw_data.get("duration") or "0").strip()
     try:
-        dur_sec = int(float(str(raw_dur).strip()))
+        if "[" in raw_dur or "call_dur" in raw_dur:
+            dur_sec = 0
+        else:
+            dur_sec = int(float(raw_dur))
     except Exception:
         dur_sec = 0
 
     # Extract direction
-    raw_dir = str(
-        raw_data.get("direction")
-        or raw_data.get("call_type")
-        or direction
-        or call_type
-        or "Incoming"
-    ).strip()
+    raw_dir = str(raw_data.get("direction") or raw_data.get("call_type") or "Incoming").strip()
+    if "[" in raw_dir or "call_type" in raw_dir:
+        raw_dir = "Incoming"
     dir_enum = CallDirectionEnum.INCOMING.value if "in" in raw_dir.lower() else CallDirectionEnum.OUTGOING.value
 
     # Extract notes
-    raw_notes = raw_data.get("notes") or notes or "Auto-synced via Mobile Phone"
+    raw_notes = raw_data.get("notes") or "Auto-synced via Mobile Phone"
 
     # Normalize phone
     normalized_phone = telephony_adapter.normalize_phone_number(raw_phone)
@@ -139,27 +136,24 @@ async def sync_mobile_call_log(
         db.flush()
         logger.info(f"Auto-created new lead id={lead.id} from mobile sync.")
 
-    # 2. Save Recording File (Multipart or Raw Binary File Body)
+    # 2. Save Recording File (Supabase Storage or Local)
     recording_url = None
     rec_status = RecordingStatusEnum.UNAVAILABLE.value
     saved_filename = None
 
-    if recording_file and recording_file.filename:
+    if file_bytes and len(file_bytes) > 256:
         try:
-            file_bytes = await recording_file.read()
-            if len(file_bytes) > 0:
-                recording_url, saved_filename = await storage_adapter.upload_recording(
-                    file_bytes=file_bytes,
-                    original_filename=recording_file.filename,
-                    content_type=recording_file.content_type or "audio/mpeg"
-                )
-                rec_status = RecordingStatusEnum.AVAILABLE.value
+            recording_url, saved_filename = await storage_adapter.upload_recording(
+                file_bytes=file_bytes,
+                original_filename=file_name or f"rec_{suffix}_{uuid.uuid4().hex[:6]}.mp3",
+                content_type="audio/mpeg"
+            )
+            rec_status = RecordingStatusEnum.AVAILABLE.value
         except Exception as e:
             logger.warning(f"Recording upload error: {e}")
     else:
-        # Check if MacroDroid sent raw binary audio file in the body
+        # Check if raw binary audio file was sent in raw body
         try:
-            content_type = request.headers.get("content-type", "")
             if not ("application/x-www-form-urlencoded" in content_type or "application/json" in content_type):
                 raw_bytes = await request.body()
                 if len(raw_bytes) > 512:
