@@ -167,8 +167,25 @@ async function initApp() {
   if (roleEl) roleEl.textContent = "Authentication Required";
   if (avatarEl) avatarEl.textContent = "🔒";
 
-  const loginModal = document.getElementById("loginModal");
-  if (loginModal) loginModal.classList.remove("hidden");
+  // Start periodic live background polling (every 5s) to sync new calls instantly & prevent server sleep
+  setInterval(async () => {
+    if (authToken && !document.hidden) {
+      try {
+        const leads = await apiRequest("/leads?limit=100");
+        if (leads && Array.isArray(leads)) {
+          const countChanged = leads.length !== liveLeads.length;
+          liveLeads = leads;
+          updateBadges(liveLeads);
+          if (countChanged) {
+            renderLeadsList(liveLeads);
+            showToast("New patient call synced live!", "info");
+          }
+        }
+      } catch (e) {
+        // Silent sync catch
+      }
+    }
+  }, 5000);
 }
 
 if (document.readyState === "loading") {
