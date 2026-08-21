@@ -10,11 +10,18 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session, Mapped, mapp
 from app.core.config import settings
 from app.core.logging import logger
 
-# SQLite thread check configuration
-connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+import os
+
+# Database connection options
+db_url = settings.DATABASE_URL
+connect_args = {}
+if db_url.startswith("sqlite"):
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        db_url = "sqlite:////tmp/hospital_crm.db"
+    connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     connect_args=connect_args,
     pool_pre_ping=True,
     echo=False

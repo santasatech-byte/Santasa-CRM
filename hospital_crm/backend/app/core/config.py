@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["*"]
 
     # Database
-    DATABASE_URL: str = "sqlite:///./hospital_crm.db"
+    DATABASE_URL: str = "postgresql://postgres.vdwpxcdpzhreonutitrc:cmW7zEtAJH5ziFyo@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres"
 
     # Redis & Workers
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -47,13 +47,13 @@ class Settings(BaseSettings):
     WHATSAPP_WEBHOOK_SECRET: str = "whsec_mock_whatsapp_secret"
 
     # Storage
-    RECORDING_STORAGE_TYPE: str = "local"
+    RECORDING_STORAGE_TYPE: str = "supabase"
     RECORDING_STORAGE_PATH: str = "./storage/recordings"
 
     # Supabase Integration (Database & Audio Storage)
-    SUPABASE_URL: Optional[str] = None
+    SUPABASE_URL: Optional[str] = "https://vdwpxcdpzhreonutitrc.supabase.co"
     SUPABASE_KEY: Optional[str] = None
-    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkd3B4Y2RwemhyZW9udXRpdHJjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NjY3OTQ0OSwiZXhwIjoyMTAyMjU1NDQ5fQ.e_H5V4N7x94W5iV8d-aU9QW6zE2oP4Y3bK8X1jM0rNs"
     SUPABASE_STORAGE_BUCKET: str = "call-recordings"
 
     # Logging
