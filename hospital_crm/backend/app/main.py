@@ -3,6 +3,14 @@ Hospital CRM - Main Application Factory
 Configures FastAPI app, lifespan context, security middleware, exception handlers,
 and registers all domain modules.
 """
+import sys
+import os
+
+# Ensure backend root directory is in sys.path for Vercel Serverless runtime
+_backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 from contextlib import asynccontextmanager
 import time
 import uuid
