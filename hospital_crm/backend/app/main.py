@@ -132,6 +132,46 @@ def create_app() -> FastAPI:
     app.include_router(reports_router, prefix="/api/v1")
     app.include_router(communication_router, prefix="/api/v1")
 
+    # ---------------------------------------------------------
+    # Frontend SPA & Static Assets Serving (Vercel & Monolith)
+    # ---------------------------------------------------------
+    import os
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    base_dirs = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dist")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")),
+    ]
+
+    frontend_dist = next((d for d in base_dirs if os.path.exists(d) and os.path.exists(os.path.join(d, "index.html"))), None)
+
+    if frontend_dist:
+        assets_dir = os.path.join(frontend_dist, "assets")
+        if os.path.exists(assets_dir):
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="static-assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            if full_path.startswith("api") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+                return JSONResponse(status_code=404, content={"detail": "API endpoint not found"})
+            
+            target_file = os.path.join(frontend_dist, full_path)
+            if full_path and os.path.exists(target_file) and os.path.isfile(target_file):
+                return FileResponse(target_file)
+            
+            return FileResponse(os.path.join(frontend_dist, "index.html"))
+    else:
+        @app.get("/", include_in_schema=False)
+        async def root_fallback():
+            return {
+                "status": "online",
+                "app": settings.APP_NAME,
+                "api_docs": "/docs",
+                "message": "Santasa IVF CRM Backend Engine is live and operating."
+            }
+
     return app
 
 
