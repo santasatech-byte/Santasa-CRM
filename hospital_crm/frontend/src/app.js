@@ -1,6 +1,7 @@
 /**
- * Santasa IVF & Hospital CRM — Live Executive Workspace Controller
+ * Santasa IVF & Hospital CRM — Live Executive Workspace Controller (v3.0.0)
  * Fully dynamic: Directly integrated with FastAPI & Supabase PostgreSQL & Audio Storage
+ * Brand Theme: Royal Purple (#683381), Rose Pink (#EC5A8D), Turquoise (#40BDB3)
  */
 
 let API_BASE = localStorage.getItem("crm_api_url") || "https://santasa-crm.onrender.com/api/v1";
@@ -13,6 +14,33 @@ let activeLead = null;
 let currentFilter = "all";
 let callInterval = null;
 let callDurationSec = 0;
+let snoozedReminders = new Set();
+let lastAlertedLeadId = null;
+
+// Audio Chime Synthesizer using Web Audio API (Zero external files needed)
+function playReminderChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 tone
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5 tone
+    
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch (e) {
+    console.debug("Audio chime note:", e);
+  }
+}
 
 // Default Template Definitions
 const WA_TEMPLATES = {
@@ -64,13 +92,11 @@ async function apiRequest(endpoint, options = {}) {
   try {
     let res = await fetch(`${API_BASE}${endpoint}`, options);
     if (res.status === 401) {
-      // 1. Try refreshing active Supabase session
       const refreshed = await refreshSupabaseSession();
       if (refreshed) {
         options.headers["Authorization"] = `Bearer ${authToken}`;
         res = await fetch(`${API_BASE}${endpoint}`, options);
       } else {
-        // 2. Re-authenticate
         const authRes = await authenticateDefaultExecutive();
         if (authRes && authRes.success && authToken) {
           options.headers["Authorization"] = `Bearer ${authToken}`;
@@ -91,7 +117,7 @@ async function apiRequest(endpoint, options = {}) {
 
 async function authenticateDefaultExecutive(customEmail = null, customPassword = null) {
   const email = (customEmail || "executive@santasa.com").trim();
-  const password = customPassword || (email.includes("admin") ? "Santasa@Admin2026!" : "Executive@2026!");
+  const password = customPassword || (email.includes("admin") ? "Admin@2026!" : "Executive@2026!");
 
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -140,7 +166,7 @@ async function initApp() {
       if (user) {
         currentExecutive = user;
         updateUserProfileUI(currentExecutive);
-        showToast(`Welcome back, ${user.full_name || 'Executive'}!`, "success");
+        showToast(`Welcome to Santasa CRM, ${user.full_name || 'Executive'}!`, "success");
         await refreshLeadsQueue();
         const loginModal = document.getElementById("loginModal");
         if (loginModal) loginModal.classList.add("hidden");
@@ -167,7 +193,10 @@ async function initApp() {
   if (roleEl) roleEl.textContent = "Authentication Required";
   if (avatarEl) avatarEl.textContent = "🔒";
 
-  // Start periodic live background polling (every 5s) to sync new calls instantly & prevent server sleep
+  const loginModal = document.getElementById("loginModal");
+  if (loginModal) loginModal.classList.remove("hidden");
+
+  // Real-Time 5-second Live Sync & Auto-Reminder Checker
   setInterval(async () => {
     if (authToken && !document.hidden) {
       try {
@@ -180,6 +209,7 @@ async function initApp() {
             renderLeadsList(liveLeads);
             showToast("New patient call synced live!", "info");
           }
+          checkExecutiveDueReminders(liveLeads);
         }
       } catch (e) {
         // Silent sync catch
@@ -200,12 +230,97 @@ function updateUserProfileUI(user) {
   const roleEl = document.getElementById("userProfileRole");
   const avatarEl = document.getElementById("userAvatar");
 
-  const displayName = user.full_name || (user.role === "Super Admin" ? "Admin" : "Pooja Sharma");
+  const displayName = user.full_name || (user.role === "Super Admin" ? "Admin" : "CRM Executive");
   if (nameEl) nameEl.textContent = displayName;
   if (roleEl) roleEl.textContent = `${user.role || 'Executive'} • Online`;
   if (avatarEl) {
     const initials = displayName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "EX";
     avatarEl.textContent = initials;
+  }
+}
+
+// -------------------------------------------------------------
+// Automatic Executive Callback Reminder System
+// -------------------------------------------------------------
+function checkExecutiveDueReminders(leads) {
+  const now = new Date();
+  const alertThreshold = new Date(now.getTime() + 15 * 60 * 1000); // due now or within next 15 mins
+
+  const dueLead = leads.find(l => {
+    if (snoozedReminders.has(l.id)) return false;
+    if (l.lead_status === "Converted (Under Treatment)" || l.lead_status === "Not Interested / Lost") return false;
+    if (!l.next_followup_at) return false;
+    const fuDate = new Date(l.next_followup_at);
+    return fuDate <= alertThreshold;
+  });
+
+  const banner = document.getElementById("executiveReminderBanner");
+  if (!banner) return;
+
+  if (dueLead) {
+    const pName = document.getElementById("reminderPatientText");
+    const pNote = document.getElementById("reminderNoteText");
+    const pTime = document.getElementById("reminderDueTime");
+
+    const fuDate = new Date(dueLead.next_followup_at);
+    const diffMins = Math.round((fuDate - now) / (60 * 1000));
+    const timeLabel = diffMins <= 0 ? "Due Now (Overdue)" : `Due in ${diffMins} min`;
+
+    if (pName) pName.textContent = `Patient: ${dueLead.patient_name} (${dueLead.primary_phone || ''})`;
+    if (pNote) pNote.textContent = dueLead.notes || "Follow-up callback required with patient.";
+    if (pTime) pTime.textContent = timeLabel;
+
+    banner.classList.remove("hidden");
+
+    // Play synthesized audio chime only on fresh alert
+    if (lastAlertedLeadId !== dueLead.id) {
+      lastAlertedLeadId = dueLead.id;
+      playReminderChime();
+    }
+
+    // Connect Quick Action Buttons on Reminder
+    const callBtn = document.getElementById("reminderCallNowBtn");
+    const waBtn = document.getElementById("reminderWhatsappBtn");
+    const snoozeBtn = document.getElementById("reminderSnoozeBtn");
+    const dismissBtn = document.getElementById("reminderDismissBtn");
+
+    if (callBtn) {
+      callBtn.onclick = () => {
+        selectLead(dueLead.id);
+        const actionCallBtn = document.getElementById("actionCallBtn");
+        if (actionCallBtn) actionCallBtn.click();
+        banner.classList.add("hidden");
+      };
+    }
+
+    if (waBtn) {
+      waBtn.onclick = () => {
+        selectLead(dueLead.id);
+        const actionWhatsappBtn = document.getElementById("actionWhatsappBtn");
+        if (actionWhatsappBtn) actionWhatsappBtn.click();
+        banner.classList.add("hidden");
+      };
+    }
+
+    if (snoozeBtn) {
+      snoozeBtn.onclick = () => {
+        snoozedReminders.add(dueLead.id);
+        banner.classList.add("hidden");
+        showToast(`Reminder for ${dueLead.patient_name} snoozed for 15m.`, "info");
+        setTimeout(() => {
+          snoozedReminders.delete(dueLead.id);
+        }, 15 * 60 * 1000);
+      };
+    }
+
+    if (dismissBtn) {
+      dismissBtn.onclick = () => {
+        snoozedReminders.add(dueLead.id);
+        banner.classList.add("hidden");
+      };
+    }
+  } else {
+    banner.classList.add("hidden");
   }
 }
 
@@ -223,6 +338,7 @@ async function refreshLeadsQueue() {
     liveLeads = leads || [];
     renderLeadsList(liveLeads);
     updateBadges(liveLeads);
+    checkExecutiveDueReminders(liveLeads);
 
     if (liveLeads.length > 0) {
       if (!activeLead || !liveLeads.find(l => l.id === activeLead.id)) {
@@ -242,16 +358,24 @@ async function refreshLeadsQueue() {
 
 function updateBadges(leads) {
   const allCount = leads.length;
-  const newCount = leads.filter(l => l.lead_status === "New").length;
-  const fuCount = leads.filter(l => l.lead_status === "Follow-up").length;
-  const apptCount = leads.filter(l => l.lead_status === "Appointment Booked").length;
+  const newCount = leads.filter(l => l.lead_status === "New" || !l.lead_status).length;
+  const fuCount = leads.filter(l => l.lead_status === "Follow-up" || l.lead_status === "Follow-up Needed").length;
+  const apptCount = leads.filter(l => l.lead_status === "Appointment Booked" || l.lead_status === "Appointment Scheduled").length;
+
+  const now = new Date();
+  const dueRemindersCount = leads.filter(l => {
+    if (!l.next_followup_at) return false;
+    return new Date(l.next_followup_at) <= new Date(now.getTime() + 60 * 60 * 1000);
+  }).length;
 
   const countToday = document.getElementById("countTodayBadge");
+  const countReminders = document.getElementById("countRemindersBadge");
   const countDue = document.getElementById("countDueBadge");
   const countAppts = document.getElementById("countApptsBadge");
   const countAll = document.getElementById("countAllLeads");
 
   if (countToday) countToday.textContent = allCount;
+  if (countReminders) countReminders.textContent = dueRemindersCount;
   if (countDue) countDue.textContent = fuCount;
   if (countAppts) countAppts.textContent = apptCount;
   if (countAll) countAll.textContent = allCount;
@@ -272,10 +396,20 @@ function renderLeadsList(leads) {
   const container = document.getElementById("leadsListContainer");
   if (!container) return;
 
+  const now = new Date();
   let filtered = leads;
-  if (currentFilter === "new") filtered = leads.filter(l => l.lead_status === "New");
-  else if (currentFilter === "followup") filtered = leads.filter(l => l.lead_status === "Follow-up");
-  else if (currentFilter === "appointment") filtered = leads.filter(l => l.lead_status === "Appointment Booked");
+  if (currentFilter === "new") {
+    filtered = leads.filter(l => l.lead_status === "New" || !l.lead_status);
+  } else if (currentFilter === "followup" || currentFilter === "due") {
+    filtered = leads.filter(l => l.lead_status === "Follow-up" || l.lead_status === "Follow-up Needed");
+  } else if (currentFilter === "appointment" || currentFilter === "appointments") {
+    filtered = leads.filter(l => l.lead_status === "Appointment Booked" || l.lead_status === "Appointment Scheduled");
+  } else if (currentFilter === "reminders") {
+    filtered = leads.filter(l => {
+      if (!l.next_followup_at) return false;
+      return new Date(l.next_followup_at) <= new Date(now.getTime() + 60 * 60 * 1000);
+    });
+  }
 
   if (filtered.length === 0) {
     container.innerHTML = `<div class="empty-state">No patient leads in this queue. Click <strong>+ New Lead</strong> to create one.</div>`;
@@ -288,32 +422,43 @@ function renderLeadsList(leads) {
     const priorityClass = getPriorityClass(lead.priority);
     const timeFormatted = lead.created_at ? new Date(lead.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
 
+    const isCallbackDue = lead.next_followup_at && new Date(lead.next_followup_at) <= new Date(now.getTime() + 15 * 60 * 1000);
+    const callbackDueHtml = isCallbackDue ? `<span class="reminder-due-tag">⏰ Callback Due</span>` : "";
+    const cardClass = isCallbackDue ? "callback-due-card" : "";
+
     return `
-      <div class="lead-card ${isSelected}" data-lead-id="${lead.id}">
+      <div class="lead-card ${isSelected} ${cardClass}" data-lead-id="${lead.id}">
         <div class="card-top-row">
           <span class="card-patient-name">${escapeHtml(lead.patient_name)}</span>
-          <span class="status-pill ${statusClass}">${escapeHtml(lead.lead_status)}</span>
+          <span class="status-pill ${statusClass}">${escapeHtml(lead.lead_status || 'New')}</span>
         </div>
         <div class="card-meta-row">
-          <span class="card-phone">${escapeHtml(lead.primary_phone || lead.normalized_phone)}</span>
+          <span class="card-phone">${escapeHtml(lead.primary_phone || lead.normalized_phone || '')}</span>
           <span class="card-source-dot">•</span>
           <span>${escapeHtml(lead.lead_source || 'Enquiry')}</span>
           <span class="card-source-dot">•</span>
           <span>${escapeHtml(lead.city || 'Hassan')}</span>
         </div>
-        <div class="card-bottom-row">
-          <span class="priority-pill ${priorityClass}">${escapeHtml(lead.priority || 'Medium')} Priority</span>
-          <span class="timeline-time">${timeFormatted}</span>
+        <div class="card-badges-row">
+          <span class="priority-pill ${priorityClass}">${escapeHtml(lead.priority || 'High')}</span>
+          ${callbackDueHtml}
+          <span class="timeline-time" style="margin-left: auto;">${timeFormatted}</span>
         </div>
       </div>
     `;
   }).join("");
 
-  // Attach card click listeners
+  // Attach card click listeners & mobile switch
   container.querySelectorAll(".lead-card").forEach(card => {
     card.addEventListener("click", () => {
       const id = card.getAttribute("data-lead-id");
       selectLead(id);
+
+      // On mobile devices, open detail panel
+      if (window.innerWidth <= 768) {
+        const detailPanel = document.getElementById("leadDetailPanel");
+        if (detailPanel) detailPanel.classList.add("mobile-active");
+      }
     });
   });
 }
@@ -337,8 +482,6 @@ async function selectLead(leadId) {
     const lead = await apiRequest(`/leads/${leadId}`);
     activeLead = lead;
     renderActiveLead(lead);
-
-    // Load Live Activity Timeline
     await loadTimeline(leadId);
   } catch (err) {
     console.warn("Error refreshing lead details:", err);
@@ -350,41 +493,60 @@ function renderActiveLead(lead) {
 
   const nameEl = document.getElementById("detailPatientName");
   const phoneEl = document.getElementById("detailPhone");
-  const locEl = document.getElementById("detailLocation");
-  const sourceEl = document.getElementById("detailSource");
-  const deptEl = document.getElementById("detailDept");
   const statusEl = document.getElementById("detailLeadStatus");
   const priorityEl = document.getElementById("detailPriority");
+  const locationEl = document.getElementById("detailLocation");
+  const sourceEl = document.getElementById("detailSource");
+  const deptEl = document.getElementById("detailDept");
 
-  if (nameEl) nameEl.textContent = lead.patient_name;
-  if (phoneEl) phoneEl.textContent = lead.primary_phone || lead.normalized_phone;
-  if (locEl) locEl.textContent = lead.city ? `${lead.city}, Karnataka` : "Hassan";
-  if (sourceEl) sourceEl.textContent = lead.lead_source || "Incoming Inquiry";
-  if (deptEl) deptEl.textContent = lead.department || "Fertility & IVF";
-
+  if (nameEl) nameEl.textContent = lead.patient_name || "Unknown Patient";
+  if (phoneEl) phoneEl.textContent = lead.primary_phone || lead.normalized_phone || "--";
   if (statusEl) {
-    statusEl.textContent = lead.lead_status;
+    statusEl.textContent = lead.lead_status || "New";
     statusEl.className = `status-pill ${getStatusClass(lead.lead_status)}`;
   }
   if (priorityEl) {
-    priorityEl.textContent = `${lead.priority || 'Medium'} Priority`;
+    priorityEl.textContent = `${lead.priority || 'High'} Priority`;
     priorityEl.className = `priority-pill ${getPriorityClass(lead.priority)}`;
   }
+  if (locationEl) locationEl.textContent = `${lead.city || 'Hassan'}, Karnataka`;
+  if (sourceEl) sourceEl.textContent = lead.lead_source || "Mobile Sync";
+  if (deptEl) deptEl.textContent = lead.department || "Fertility & IVF";
 
-  // Next Follow-up card
-  const fuCard = document.getElementById("nextFollowupAlert");
-  const fuTime = document.getElementById("followupTimeDisplay");
-  const fuNote = document.getElementById("followupNoteDisplay");
+  // Detailed profile tab
+  const pName = document.getElementById("profileName");
+  const pPhone = document.getElementById("profilePhone");
+  const pAgeGen = document.getElementById("profileAgeGender");
+  const pCity = document.getElementById("profileCity");
+  const pSource = document.getElementById("profileSource");
+  const pDept = document.getElementById("profileDept");
+  const pFollowup = document.getElementById("profileFollowup");
+  const pExec = document.getElementById("profileExecutive");
+  const pNotes = document.getElementById("profileNotes");
 
-  if (lead.next_followup_at && fuCard) {
-    fuCard.style.display = "flex";
-    if (fuTime) fuTime.textContent = new Date(lead.next_followup_at).toLocaleString();
-    if (fuNote) fuNote.textContent = lead.notes || "Follow-up scheduled";
-  } else if (fuCard) {
-    fuCard.style.display = "none";
+  if (pName) pName.textContent = lead.patient_name || "--";
+  if (pPhone) pPhone.textContent = lead.primary_phone || lead.normalized_phone || "--";
+  if (pAgeGen) pAgeGen.textContent = `${lead.age ? lead.age + ' yrs' : 'Age: --'}, ${lead.gender || 'Female'}`;
+  if (pCity) pCity.textContent = lead.city || "Hassan";
+  if (pSource) pSource.textContent = lead.lead_source || "Incoming Call";
+  if (pDept) pDept.textContent = lead.department || "Fertility & IVF";
+  if (pFollowup) {
+    pFollowup.textContent = lead.next_followup_at ? new Date(lead.next_followup_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : "None scheduled";
   }
+  if (pExec) pExec.textContent = (currentExecutive && currentExecutive.full_name) || "Assigned Executive";
+  if (pNotes) pNotes.textContent = lead.notes || "No additional clinical notes recorded.";
 }
 
+function renderEmptyWorkspace() {
+  const nameEl = document.getElementById("detailPatientName");
+  if (nameEl) nameEl.textContent = "Select a Patient";
+  const feed = document.getElementById("timelineFeed");
+  if (feed) feed.innerHTML = `<div class="empty-state">Select a patient from the queue to start clinical counseling.</div>`;
+}
+
+// -------------------------------------------------------------
+// Timeline & Activity Feed Loading with In-Browser Audio Player
+// -------------------------------------------------------------
 async function loadTimeline(leadId) {
   const feed = document.getElementById("timelineFeed");
   if (!feed) return;
@@ -422,20 +584,19 @@ async function loadTimeline(leadId) {
         `;
       }
 
-      const isConversion = type === "conversion" || (act.title && act.title.toLowerCase().includes("conversion"));
       let iconBoxClass = "note";
       if (type.includes("call")) iconBoxClass = "call";
       else if (type.includes("whatsapp")) iconBoxClass = "whatsapp";
       else if (type.includes("appoint")) iconBoxClass = "appointment";
       else if (type.includes("follow")) iconBoxClass = "followup";
-      else if (isConversion) iconBoxClass = "conversion";
+      else if (type.includes("conversion")) iconBoxClass = "conversion";
 
       return `
         <div class="timeline-item">
           <div class="timeline-icon-box ${iconBoxClass}">
             ${iconSvg}
           </div>
-          <div class="timeline-card ${isConversion ? 'highlight-conversion' : ''}">
+          <div class="timeline-card">
             <div class="timeline-card-header">
               <span class="timeline-card-title">${escapeHtml(act.title)}</span>
               <span class="timeline-time">${timeFormatted}</span>
@@ -451,65 +612,54 @@ async function loadTimeline(leadId) {
   }
 }
 
-function renderEmptyWorkspace() {
-  const nameEl = document.getElementById("detailPatientName");
-  if (nameEl) nameEl.textContent = "No Patient Leads Found";
-  const feed = document.getElementById("timelineFeed");
-  if (feed) feed.innerHTML = `<div class="empty-state">Your workspace is clean. Create your first lead with <strong>+ New Lead</strong>.</div>`;
-}
-
 // -------------------------------------------------------------
-// Interactive Action Handlers & Modals
+// Interactive Action Handlers & Event Setup
 // -------------------------------------------------------------
 function setupEventHandlers() {
-  // Modal Open/Close handlers
-  document.querySelectorAll("[data-close]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const modalId = btn.getAttribute("data-close");
-      const modal = document.getElementById(modalId);
-      if (modal) modal.classList.add("hidden");
+  // Mobile Hamburger Toggle
+  const mobileToggle = document.getElementById("mobileMenuToggle");
+  const sidebar = document.getElementById("mainSidebar");
+  if (mobileToggle && sidebar) {
+    mobileToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
     });
-  });
+  }
 
-  // Global Quick Search
-  const searchInput = document.getElementById("globalSearchInput");
-  if (searchInput) {
-    let searchTimeout = null;
-    searchInput.addEventListener("input", (e) => {
-      clearTimeout(searchTimeout);
-      const q = e.target.value.trim();
-      searchTimeout = setTimeout(async () => {
-        if (!q) {
-          refreshLeadsQueue();
-          return;
-        }
-        try {
-          const results = await apiRequest(`/leads/search?q=${encodeURIComponent(q)}`);
-          liveLeads = results || [];
-          renderLeadsList(liveLeads);
-          if (liveLeads.length > 0) {
-            selectLead(liveLeads[0].id);
-          }
-        } catch (err) {
-          console.error("Search failed:", err);
-        }
-      }, 300);
+  // Mobile Back Button to Leads Queue
+  const backToLeadsBtn = document.getElementById("mobileBackToLeadsBtn");
+  const detailPanel = document.getElementById("leadDetailPanel");
+  if (backToLeadsBtn && detailPanel) {
+    backToLeadsBtn.addEventListener("click", () => {
+      detailPanel.classList.remove("mobile-active");
     });
   }
 
   // Refresh Queue Button
   const refreshBtn = document.getElementById("refreshQueueBtn");
   if (refreshBtn) {
-    refreshBtn.addEventListener("click", () => refreshLeadsQueue());
+    refreshBtn.addEventListener("click", async () => {
+      showToast("Syncing with Supabase...", "info");
+      await refreshLeadsQueue();
+      showToast("Leads refreshed!", "success");
+    });
   }
 
-  // Filters
+  // Filter Chips Click
   document.querySelectorAll(".filter-chip").forEach(chip => {
     chip.addEventListener("click", () => {
       document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
       currentFilter = chip.getAttribute("data-filter");
       renderLeadsList(liveLeads);
+    });
+  });
+
+  // Modal Closers
+  document.querySelectorAll("[data-close]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const modalId = btn.getAttribute("data-close");
+      const el = document.getElementById(modalId);
+      if (el) el.classList.add("hidden");
     });
   });
 
@@ -526,395 +676,59 @@ function setupEventHandlers() {
   if (newLeadForm) {
     newLeadForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const payload = {
-        patient_name: document.getElementById("nlPatientName").value,
-        primary_phone: document.getElementById("nlPhone").value,
-        city: document.getElementById("nlCity").value || "Hassan",
-        department: document.getElementById("nlDepartment").value,
-        lead_source: document.getElementById("nlSource").value,
-        priority: document.getElementById("nlPriority").value,
-        notes: document.getElementById("nlNotes").value
-      };
+      const name = document.getElementById("inputPatientName").value.trim();
+      const phone = document.getElementById("inputPrimaryPhone").value.trim();
+      const city = document.getElementById("inputCity").value.trim() || "Hassan";
+      const dept = document.getElementById("inputDepartment").value;
+      const prio = document.getElementById("inputPriority").value;
+      const notes = document.getElementById("inputNotes").value.trim();
 
       try {
         const lead = await apiRequest("/leads", {
           method: "POST",
-          body: payload
+          body: {
+            patient_name: name,
+            primary_phone: phone,
+            city,
+            department: dept,
+            priority: prio,
+            notes: notes || "Direct Web Lead Entry"
+          }
         });
-        showToast(`Patient lead '${lead.patient_name}' created successfully!`, "success");
+        showToast("Patient lead created successfully!", "success");
         document.getElementById("newLeadModal").classList.add("hidden");
         newLeadForm.reset();
         await refreshLeadsQueue();
-        await selectLead(lead.id);
+        if (lead && lead.id) selectLead(lead.id);
       } catch (err) {
         showToast(`Failed to create lead: ${err.message}`, "error");
       }
     });
   }
 
-function getActiveLeadOrFirst() {
-  if (activeLead) return activeLead;
-  if (liveLeads && liveLeads.length > 0) {
-    activeLead = liveLeads[0];
-    renderActiveLead(activeLead);
-    return activeLead;
-  }
-  return null;
-}
-
-  // Add Note Modal Open
-  const noteBtn = document.getElementById("actionNoteBtn");
-  if (noteBtn) {
-    noteBtn.addEventListener("click", () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      document.getElementById("addNoteModal").classList.remove("hidden");
-    });
-  }
-
-  // Add Note Form Submit
-  const addNoteForm = document.getElementById("addNoteForm");
-  if (addNoteForm) {
-    addNoteForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      const note = document.getElementById("noteContentInput").value;
-      try {
-        await apiRequest(`/leads/${current.id}/notes`, {
-          method: "POST",
-          body: { note }
-        });
-        showToast("Note added to timeline", "success");
-        document.getElementById("addNoteModal").classList.add("hidden");
-        addNoteForm.reset();
-        await loadTimeline(current.id);
-      } catch (err) {
-        showToast(`Failed to add note: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // Follow-up Modal Open
-  const fuBtn = document.getElementById("actionFollowupBtn");
-  if (fuBtn) {
-    fuBtn.addEventListener("click", () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dInput = document.getElementById("fuDateInput");
-      if (dInput) dInput.value = tomorrow.toISOString().slice(0, 10);
-      document.getElementById("scheduleFollowupModal").classList.remove("hidden");
-    });
-  }
-
-  // Follow-up Form Submit
-  const fuForm = document.getElementById("scheduleFollowupForm");
-  if (fuForm) {
-    fuForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      const dVal = document.getElementById("fuDateInput")?.value || new Date().toISOString().slice(0, 10);
-      const tVal = document.getElementById("fuTimeInput")?.value || "10:30";
-      const scheduledAt = new Date(`${dVal}T${tVal}:00`).toISOString();
-      const fuType = document.getElementById("fuTypeSelect")?.value || "Call";
-      const fuNotes = document.getElementById("fuNotesInput")?.value || "";
-
-      const payload = {
-        lead_id: current.id,
-        scheduled_at: scheduledAt,
-        type: fuType,
-        priority: "High",
-        notes: fuNotes
-      };
-
-      try {
-        await apiRequest("/followups", {
-          method: "POST",
-          body: payload
-        });
-        showToast("Follow-up scheduled successfully", "success");
-        document.getElementById("scheduleFollowupModal").classList.add("hidden");
-        fuForm.reset();
-        await refreshLeadsQueue();
-        await selectLead(current.id);
-      } catch (err) {
-        showToast(`Failed to schedule follow-up: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // Complete Follow-up
-  const markDoneBtn = document.getElementById("markFollowupDoneBtn");
-  if (markDoneBtn) {
-    markDoneBtn.addEventListener("click", async () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      try {
-        const workQueue = await apiRequest("/followups/work-queue");
-        const allItems = [...(workQueue.due_today || []), ...(workQueue.overdue || []), ...(workQueue.upcoming || [])];
-        const match = allItems.find(item => item.lead_id === current.id);
-
-        if (match) {
-          await apiRequest(`/followups/${match.id}/complete`, {
-            method: "POST",
-            body: { completion_notes: "Follow-up marked as completed by executive." }
-          });
-          showToast("Follow-up marked as completed", "success");
-        } else {
-          await apiRequest(`/leads/${current.id}/notes`, {
-            method: "POST",
-            body: { note: "Follow-up completed." }
-          });
-          showToast("Follow-up completed", "success");
-        }
-        await refreshLeadsQueue();
-        await selectLead(current.id);
-      } catch (err) {
-        showToast(`Error completing follow-up: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // Book Appointment Modal Open
-  const apptBtn = document.getElementById("actionAppointmentBtn");
-  if (apptBtn) {
-    apptBtn.addEventListener("click", () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      const nextDay = new Date();
-      nextDay.setDate(nextDay.getDate() + 2);
-      const dInput = document.getElementById("apptDateInput");
-      if (dInput) dInput.value = nextDay.toISOString().slice(0, 10);
-      document.getElementById("bookAppointmentModal").classList.remove("hidden");
-    });
-  }
-
-  // Book Appointment Form Submit
-  const apptForm = document.getElementById("bookAppointmentForm");
-  if (apptForm) {
-    apptForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      const dVal = document.getElementById("apptDateInput")?.value || new Date().toISOString().slice(0, 10);
-      const tVal = document.getElementById("apptTimeInput")?.value || "11:00";
-      const appointmentAt = new Date(`${dVal}T${tVal}:00`).toISOString();
-      const doctor = document.getElementById("apptDoctorSelect")?.value || "Dr. Soumya Dinesh (Senior IVF Specialist)";
-      const notes = document.getElementById("apptNotesInput")?.value || "";
-
-      const payload = {
-        lead_id: current.id,
-        appointment_at: appointmentAt,
-        service_type: "Fertility Consultation",
-        notes: `Consulting: ${doctor}. ${notes}`
-      };
-
-      try {
-        await apiRequest("/appointments", {
-          method: "POST",
-          body: payload
-        });
-        showToast("Consultation appointment booked successfully!", "success");
-        document.getElementById("bookAppointmentModal").classList.add("hidden");
-        apptForm.reset();
-        await refreshLeadsQueue();
-        await selectLead(current.id);
-      } catch (err) {
-        showToast(`Failed to book appointment: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // Consultation Outcome Modal Open
-  const outcomeBtn = document.getElementById("actionOutcomeBtn");
-  if (outcomeBtn) {
-    outcomeBtn.addEventListener("click", () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      document.getElementById("consultationOutcomeModal").classList.remove("hidden");
-    });
-  }
-
-  // Consultation Outcome Form Submit
-  const outcomeForm = document.getElementById("consultationOutcomeForm");
-  if (outcomeForm) {
-    outcomeForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      const decision = document.getElementById("outcomeStatusSelect").value;
-      const service = document.getElementById("outcomeServiceInput").value;
-      const estVal = parseFloat(document.getElementById("outcomeEstimatedValInput").value) || 0;
-      const convVal = parseFloat(document.getElementById("outcomeConversionValInput").value) || 0;
-      const summary = document.getElementById("outcomeSummaryInput").value;
-
-      try {
-        if (decision.includes("Converted") || decision.includes("Booked")) {
-          // Record Conversion & Revenue
-          await apiRequest("/conversions", {
-            method: "POST",
-            body: {
-              lead_id: current.id,
-              converted_service: service,
-              conversion_value: convVal,
-              notes: summary
-            }
-          });
-          showToast(`Treatment conversion recorded (₹${convVal.toLocaleString()})!`, "success");
-        } else {
-          // Log outcome via note / status
-          await apiRequest(`/leads/${current.id}/notes`, {
-            method: "POST",
-            body: { note: `Outcome: ${decision}. Summary: ${summary}` }
-          });
-          showToast("Outcome recorded successfully", "success");
-        }
-        document.getElementById("consultationOutcomeModal").classList.add("hidden");
-        outcomeForm.reset();
-        await refreshLeadsQueue();
-        await selectLead(current.id);
-      } catch (err) {
-        showToast(`Failed to record outcome: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // WhatsApp Modal Open
-  const waBtn = document.getElementById("actionWhatsappBtn");
-  if (waBtn) {
-    waBtn.addEventListener("click", () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      const phoneEl = document.getElementById("waRecipientPhone");
-      if (phoneEl) phoneEl.value = current.primary_phone || current.normalized_phone;
-      updateWhatsAppPreview();
-      document.getElementById("whatsappModal").classList.remove("hidden");
-    });
-  }
-
-  const waSelect = document.getElementById("waTemplateSelect");
-  if (waSelect) {
-    waSelect.addEventListener("change", () => updateWhatsAppPreview());
-  }
-
-  function updateWhatsAppPreview() {
-    const current = getActiveLeadOrFirst();
-    if (!current) return;
-    const tName = document.getElementById("waTemplateSelect").value;
-    const bodyEl = document.getElementById("waMessageBody");
-    if (!bodyEl) return;
-
-    let text = WA_TEMPLATES[tName] || "";
-    text = text.replace("{patient_name}", current.patient_name || "Patient")
-               .replace("{branch_name}", current.city || "Hassan")
-               .replace("{time}", "Saturday, 11:30 AM")
-               .replace("{review_url}", "https://g.page/r/santasa-ivf-review");
-    bodyEl.value = text;
-  }
-
-  // WhatsApp Form Submit
-  const waForm = document.getElementById("whatsappForm");
-  if (waForm) {
-    waForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const current = getActiveLeadOrFirst();
-      if (!current) return;
-      const tName = document.getElementById("waTemplateSelect").value;
-      const body = document.getElementById("waMessageBody").value;
-      const rawPhone = current.primary_phone || current.normalized_phone || "";
-      const cleanDigits = rawPhone.replace(/\D/g, "");
-      const intlPhone = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
-
-      try {
-        if (tName === "google_review_request") {
-          await apiRequest("/communication/whatsapp/review-request", {
-            method: "POST",
-            body: { lead_id: current.id }
-          });
-          showToast("Google Review link logged & opening WhatsApp...", "success");
-        } else {
-          await apiRequest("/communication/whatsapp/send", {
-            method: "POST",
-            body: {
-              lead_id: current.id,
-              template_name: tName !== "custom" ? tName : null,
-              custom_body: tName === "custom" ? body : null,
-              template_params: { time: "Saturday, 11:30 AM", branch_name: current.city || "Hassan" }
-            }
-          });
-          showToast("WhatsApp message logged & opening chat...", "success");
-        }
-        document.getElementById("whatsappModal").classList.add("hidden");
-        await loadTimeline(current.id);
-
-        // Open Real WhatsApp (App on mobile, Web on desktop)
-        if (intlPhone) {
-          const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(body)}`;
-          window.open(waUrl, "_blank");
-        }
-      } catch (err) {
-        showToast(`Failed to send WhatsApp: ${err.message}`, "error");
-      }
-    });
-  }
-
-  // Click-to-Call Patient
+  // Call Patient Action Button
   const callBtn = document.getElementById("actionCallBtn");
   if (callBtn) {
-    callBtn.addEventListener("click", async () => {
-      const current = getActiveLeadOrFirst();
-      if (!current) return showToast("Create or select a patient lead first.", "warning");
-      const phone = current.primary_phone || current.normalized_phone || "";
-      const cleanDigits = phone.replace(/\D/g, "");
-      const intlPhone = cleanDigits.length === 10 ? `+91${cleanDigits}` : `+${cleanDigits}`;
-
-      // 1. Open live call modal in CRM
-      const modal = document.getElementById("liveCallModal");
-      const nameEl = document.getElementById("callPatientName");
-      const phoneEl = document.getElementById("callPatientPhone");
-      if (nameEl) nameEl.textContent = current.patient_name;
-      if (phoneEl) phoneEl.textContent = phone;
-      modal.classList.remove("hidden");
-
-      // 2. Trigger native device phone dialer (Direct SIM dialing on phone)
-      try {
-        const dialerLink = document.createElement("a");
-        dialerLink.href = `tel:${intlPhone}`;
-        dialerLink.style.display = "none";
-        document.body.appendChild(dialerLink);
-        dialerLink.click();
-        setTimeout(() => dialerLink.remove(), 400);
-      } catch (e) {
-        console.warn("Native dialer trigger:", e);
+    callBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
       }
+      const callModal = document.getElementById("liveCallModal");
+      document.getElementById("callPatientName").textContent = `Calling ${activeLead.patient_name}...`;
+      document.getElementById("callPatientPhone").textContent = activeLead.primary_phone || activeLead.normalized_phone || "--";
+      callModal.classList.remove("hidden");
 
-      // Start timer
       callDurationSec = 0;
       const timerEl = document.getElementById("callTimer");
+      timerEl.textContent = "00:00";
       clearInterval(callInterval);
       callInterval = setInterval(() => {
         callDurationSec++;
         const mins = String(Math.floor(callDurationSec / 60)).padStart(2, '0');
         const secs = String(callDurationSec % 60).padStart(2, '0');
-        if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+        timerEl.textContent = `${mins}:${secs}`;
       }, 1000);
-
-      // Trigger Click-to-call API in backend
-      try {
-        await apiRequest("/telephony/click-to-call", {
-          method: "POST",
-          body: {
-            lead_id: current.id,
-            patient_phone: phone
-          }
-        });
-        document.getElementById("modalCallStatus").textContent = "Call Connected. Conversation in progress...";
-      } catch (err) {
-        console.warn("Click-to-call direct trigger:", err.message);
-      }
     });
   }
 
@@ -924,59 +738,224 @@ function getActiveLeadOrFirst() {
     endCallBtn.addEventListener("click", async () => {
       clearInterval(callInterval);
       document.getElementById("liveCallModal").classList.add("hidden");
-      showToast(`Call ended (${callDurationSec}s). Logged to timeline.`, "info");
-      if (activeLead) {
+      if (!activeLead) return;
+
+      showToast(`Call ended (${callDurationSec}s). Logging to timeline...`, "info");
+      try {
+        await apiRequest("/telephony/mobile-sync/call-log", {
+          method: "POST",
+          body: {
+            phone_number: activeLead.primary_phone || activeLead.normalized_phone,
+            direction: "Outgoing",
+            duration_seconds: callDurationSec,
+            notes: "Outgoing Clinical Call from Web Workspace"
+          }
+        });
+        showToast("Call logged to patient timeline!", "success");
         await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Call sync note: ${err.message}`, "info");
       }
     });
   }
 
-  // Reports & Analytics Modal
+  // WhatsApp Action Button
+  const waBtn = document.getElementById("actionWhatsappBtn");
+  if (waBtn) {
+    waBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
+      }
+      const phone = (activeLead.primary_phone || activeLead.normalized_phone || "").replace(/[^0-9]/g, "");
+      const msg = encodeURIComponent(`Hello ${activeLead.patient_name}, greetings from Santasa IVF & Hospital. We are reaching out regarding your fertility inquiry.`);
+      window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+      showToast("Opened WhatsApp Web!", "success");
+    });
+  }
+
+  // Schedule Follow-up Modal
+  const followupBtn = document.getElementById("actionFollowupBtn");
+  if (followupBtn) {
+    followupBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
+      }
+      document.getElementById("followupModal").classList.remove("hidden");
+    });
+  }
+
+  const followupForm = document.getElementById("followupForm");
+  if (followupForm) {
+    followupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeLead) return;
+      const dateVal = document.getElementById("inputFollowupDate").value;
+      const noteVal = document.getElementById("inputFollowupNote").value.trim();
+
+      try {
+        await apiRequest(`/leads/${activeLead.id}/followups`, {
+          method: "POST",
+          body: {
+            scheduled_at: new Date(dateVal).toISOString(),
+            notes: noteVal
+          }
+        });
+        showToast("Callback reminder scheduled!", "success");
+        document.getElementById("followupModal").classList.add("hidden");
+        followupForm.reset();
+        await refreshLeadsQueue();
+        await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Failed to schedule reminder: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Book Appointment Modal
+  const apptBtn = document.getElementById("actionApptBtn");
+  if (apptBtn) {
+    apptBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
+      }
+      document.getElementById("apptModal").classList.remove("hidden");
+    });
+  }
+
+  const apptForm = document.getElementById("apptForm");
+  if (apptForm) {
+    apptForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeLead) return;
+      const doctor = document.getElementById("inputDoctor").value;
+      const branch = document.getElementById("inputApptBranch").value;
+      const dateVal = document.getElementById("inputApptDate").value;
+      const type = document.getElementById("inputApptType").value;
+
+      try {
+        await apiRequest("/appointments", {
+          method: "POST",
+          body: {
+            lead_id: activeLead.id,
+            doctor_name: doctor,
+            branch_name: branch,
+            appointment_date: new Date(dateVal).toISOString(),
+            appointment_type: type
+          }
+        });
+        showToast("Appointment confirmed with Dr. Soumya!", "success");
+        document.getElementById("apptModal").classList.add("hidden");
+        apptForm.reset();
+        await refreshLeadsQueue();
+        await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Failed to book appointment: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Add Note Modal
+  const noteBtn = document.getElementById("actionNoteBtn");
+  if (noteBtn) {
+    noteBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
+      }
+      document.getElementById("noteModal").classList.remove("hidden");
+    });
+  }
+
+  const noteForm = document.getElementById("noteForm");
+  if (noteForm) {
+    noteForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeLead) return;
+      const text = document.getElementById("inputNoteText").value.trim();
+
+      try {
+        await apiRequest(`/leads/${activeLead.id}/notes`, {
+          method: "POST",
+          body: { notes: text }
+        });
+        showToast("Clinical note recorded!", "success");
+        document.getElementById("noteModal").classList.add("hidden");
+        noteForm.reset();
+        await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Failed to save note: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Outcome / Funnel Stage Modal
+  const outcomeBtn = document.getElementById("actionOutcomeBtn");
+  if (outcomeBtn) {
+    outcomeBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient first.", "error");
+        return;
+      }
+      document.getElementById("outcomeModal").classList.remove("hidden");
+    });
+  }
+
+  const outcomeForm = document.getElementById("outcomeForm");
+  if (outcomeForm) {
+    outcomeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!activeLead) return;
+      const statusVal = document.getElementById("inputOutcomeStatus").value;
+      const revenueVal = parseFloat(document.getElementById("inputRevenue").value || "0");
+      const notesVal = document.getElementById("inputOutcomeNotes").value.trim();
+
+      try {
+        await apiRequest(`/leads/${activeLead.id}/outcome`, {
+          method: "POST",
+          body: {
+            lead_status: statusVal,
+            revenue: revenueVal,
+            remarks: notesVal
+          }
+        });
+        showToast("Lead outcome recorded!", "success");
+        document.getElementById("outcomeModal").classList.add("hidden");
+        outcomeForm.reset();
+        await refreshLeadsQueue();
+        await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Failed to record outcome: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Reports / Analytics Modal
   const reportsNav = document.getElementById("navReports");
   if (reportsNav) {
     reportsNav.addEventListener("click", async (e) => {
       e.preventDefault();
-      const modal = document.getElementById("reportsModal");
-      if (modal) modal.classList.remove("hidden");
+      document.getElementById("reportsModal").classList.remove("hidden");
 
       try {
-        const [funnel, rev] = await Promise.all([
-          apiRequest("/reports/funnel"),
-          apiRequest("/reports/revenue-summary")
-        ]);
+        const stats = await apiRequest("/reports/conversions");
+        if (stats) {
+          document.getElementById("statTotalRevenue").textContent = `₹${(stats.total_revenue || 0).toLocaleString('en-IN')}`;
+          document.getElementById("statTotalConversions").textContent = stats.converted_count || 0;
+          document.getElementById("statConversionRate").textContent = `${stats.conversion_rate || 0}%`;
 
-        const revEl = document.getElementById("statTotalRevenue");
-        const convEl = document.getElementById("statTotalConversions");
-        const rateEl = document.getElementById("statConversionRate");
-
-        if (revEl) revEl.textContent = `₹${(rev.total_revenue_inr || 0).toLocaleString()}`;
-        if (convEl) convEl.textContent = rev.total_conversions || 0;
-        if (rateEl) rateEl.textContent = `${funnel.conversion_rate_percent || 0}%`;
-
-        const stagesEl = document.getElementById("funnelStagesList");
-        if (stagesEl) {
-          stagesEl.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <div style="display:flex; justify-content:space-between; padding:6px 10px; background:#f8fafc; border-radius:4px;">
-                <span>1. Total Inquiries (Leads)</span>
-                <strong>${funnel.total_leads || 0}</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; padding:6px 10px; background:#f8fafc; border-radius:4px;">
-                <span>2. Follow-ups Contacted</span>
-                <strong>${funnel.contacted_leads || 0}</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; padding:6px 10px; background:#f8fafc; border-radius:4px;">
-                <span>3. Appointments Scheduled</span>
-                <strong>${funnel.appointments_scheduled || 0}</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; padding:6px 10px; background:#f8fafc; border-radius:4px;">
-                <span>4. Consultations Completed</span>
-                <strong>${funnel.consultations_completed || 0}</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; padding:6px 10px; background:#dcfce7; border-radius:4px; font-weight:700; color:#166534;">
-                <span>5. Patient Conversions (Revenue)</span>
-                <strong>${funnel.converted || 0} (₹${(rev.total_revenue_inr || 0).toLocaleString()})</strong>
-              </div>
+          const funnelList = document.getElementById("funnelStagesList");
+          funnelList.innerHTML = `
+            <div style="background:#f8f6fa; padding:10px; border-radius:8px; border-left:4px solid var(--brand-purple);">
+              <strong>Inquiries Logged:</strong> ${liveLeads.length} leads
+            </div>
+            <div style="background:#f8f6fa; padding:10px; border-radius:8px; border-left:4px solid var(--brand-teal);">
+              <strong>Appointments Scheduled:</strong> ${liveLeads.filter(l => (l.lead_status || '').includes('App')).length} patients
+            </div>
+            <div style="background:#f8f6fa; padding:10px; border-radius:8px; border-left:4px solid var(--brand-pink);">
+              <strong>Completed IVF Cycles:</strong> ${stats.converted_count || 0} treatments
             </div>
           `;
         }
@@ -993,19 +972,25 @@ function getActiveLeadOrFirst() {
       document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
       item.classList.add("active");
       const view = item.getAttribute("data-view");
-      if (view === "today" || view === "leads") {
+
+      // Close mobile sidebar on navigation
+      if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById("mainSidebar");
+        if (sidebar) sidebar.classList.remove("open");
+      }
+
+      if (view === "today" || view === "all-leads") {
         currentFilter = "all";
-      } else if (view === "due" || view === "overdue") {
+      } else if (view === "reminders") {
+        currentFilter = "reminders";
+      } else if (view === "followups" || view === "overdue") {
         currentFilter = "followup";
       } else if (view === "appointments") {
         currentFilter = "appointment";
       }
       renderLeadsList(liveLeads);
       if (liveLeads.length > 0) {
-        const filtered = filterLeads(liveLeads, currentFilter);
-        if (filtered.length > 0) {
-          selectLead(filtered[0].id);
-        }
+        selectLead(liveLeads[0].id);
       }
     });
   });
@@ -1030,7 +1015,7 @@ function getActiveLeadOrFirst() {
     });
   }
 
-  // Quick Demo Fill buttons
+  // Demo Fill buttons
   const fillExecBtn = document.getElementById("fillExecutiveDemoBtn");
   if (fillExecBtn) {
     fillExecBtn.addEventListener("click", () => {
@@ -1065,7 +1050,7 @@ function getActiveLeadOrFirst() {
         showToast(`API Server set to: ${val}`, "info");
       } else {
         localStorage.removeItem("crm_api_url");
-        API_BASE = window.VITE_API_URL || "/api/v1";
+        API_BASE = "https://santasa-crm.onrender.com/api/v1";
         showToast("Reset to default API endpoint.", "info");
       }
     });
@@ -1076,11 +1061,11 @@ function getActiveLeadOrFirst() {
     });
   }
 
-  // Executive Status Switcher
+  // Agent Status Switcher
   const statusBtn = document.getElementById("agentStatusBtn");
   const statusLabel = document.getElementById("agentStatusLabel");
   const statuses = [
-    { label: "Online", dotColor: "#10b981" },
+    { label: "Online", dotColor: "#40bdb3" },
     { label: "In Call", dotColor: "#f59e0b" },
     { label: "On Break", dotColor: "#64748b" },
     { label: "Offline", dotColor: "#dc2626" }
@@ -1101,11 +1086,9 @@ function getActiveLeadOrFirst() {
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
-      // 1. Show login modal immediately
       const loginModal = document.getElementById("loginModal");
       if (loginModal) loginModal.classList.remove("hidden");
 
-      // 2. Clear state and storage
       localStorage.removeItem("supabase_access_token");
       localStorage.removeItem("supabase_refresh_token");
       localStorage.removeItem("crm_auth_token");
@@ -1125,28 +1108,75 @@ function getActiveLeadOrFirst() {
       if (roleEl) roleEl.textContent = "Offline";
       if (avatarEl) avatarEl.textContent = "--";
 
-      showToast("Logged out of executive workspace.", "info");
+      showToast("Logged out of workspace.", "info");
+    });
+  }
 
-      // 3. Inform backend
-      try {
-        await apiRequest("/auth/logout", { method: "POST" });
-      } catch (e) {
-        console.warn("Logout notice:", e);
+  // Global Search
+  const searchInput = document.getElementById("globalSearchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      if (!query) {
+        renderLeadsList(liveLeads);
+        return;
       }
+      const matched = liveLeads.filter(l => 
+        (l.patient_name && l.patient_name.toLowerCase().includes(query)) ||
+        (l.primary_phone && l.primary_phone.includes(query)) ||
+        (l.normalized_phone && l.normalized_phone.includes(query)) ||
+        (l.city && l.city.toLowerCase().includes(query))
+      );
+      renderLeadsList(matched);
     });
   }
 }
 
-function filterLeads(leads, filter) {
-  if (filter === "new") return leads.filter(l => l.lead_status === "New");
-  if (filter === "followup") return leads.filter(l => l.lead_status === "Follow-up");
-  if (filter === "appointment") return leads.filter(l => l.lead_status === "Appointment Booked");
-  return leads;
+// -------------------------------------------------------------
+// Helper UI Utilities
+// -------------------------------------------------------------
+function getStatusClass(status) {
+  if (!status) return "status-new";
+  const s = status.toLowerCase();
+  if (s.includes("new")) return "status-new";
+  if (s.includes("follow")) return "status-followup";
+  if (s.includes("app")) return "status-appointment";
+  if (s.includes("convert")) return "status-converted";
+  if (s.includes("lost") || s.includes("not")) return "status-lost";
+  return "status-new";
 }
 
-// -------------------------------------------------------------
-// Helpers & Toasts
-// -------------------------------------------------------------
+function getPriorityClass(prio) {
+  if (!prio) return "priority-medium";
+  const p = prio.toLowerCase();
+  if (p.includes("high")) return "priority-high";
+  if (p.includes("low")) return "priority-low";
+  return "priority-medium";
+}
+
+function getActivityIconSvg(type) {
+  if (type.includes("call")) {
+    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
+  } else if (type.includes("whatsapp")) {
+    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
+  } else if (type.includes("appoint")) {
+    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  } else if (type.includes("follow")) {
+    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  }
+  return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer");
   if (!container) return;
@@ -1158,66 +1188,8 @@ function showToast(message, type = "info") {
 
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(10px)";
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
+    toast.style.transform = "translateY(-10px)";
+    toast.style.transition = "all 200ms ease";
+    setTimeout(() => toast.remove(), 200);
+  }, 3500);
 }
-
-function getStatusClass(status) {
-  if (!status) return "status-new";
-  const s = status.toLowerCase();
-  if (s.includes("new")) return "status-new";
-  if (s.includes("follow")) return "status-followup";
-  if (s.includes("appoint")) return "status-appointment";
-  if (s.includes("convert") || s.includes("treat")) return "status-converted";
-  if (s.includes("lost") || s.includes("drop")) return "status-lost";
-  return "status-followup";
-}
-
-function getPriorityClass(priority) {
-  if (!priority) return "priority-medium";
-  const p = priority.toLowerCase();
-  if (p.includes("high") || p.includes("urgent")) return "priority-high";
-  if (p.includes("low")) return "priority-low";
-  return "priority-medium";
-}
-
-function getActivityIconSvg(type) {
-  const t = (type || "").toLowerCase();
-  if (t.includes("call")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`;
-  }
-  if (t.includes("whatsapp")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
-  }
-  if (t.includes("note")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-  }
-  if (t.includes("appoint")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>`;
-  }
-  if (t.includes("follow")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-  }
-  if (t.includes("convert") || t.includes("treat")) {
-    return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
-  }
-  return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-}
-
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-// Global Keyboard Shortcut: Alt + / or Ctrl + K for quick search
-window.addEventListener("keydown", (e) => {
-  if ((e.altKey && e.key === "/") || ((e.ctrlKey || e.metaKey) && e.key === "k")) {
-    e.preventDefault();
-    const searchInput = document.getElementById("globalSearchInput");
-    if (searchInput) {
-      searchInput.focus();
-      searchInput.select();
-    }
-  }
-});

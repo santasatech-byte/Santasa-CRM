@@ -4,24 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Santasa IVF & Hospital CRM — Lead & Follow-up Workspace</title>
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="icon" type="image/png" href="./santasa-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./src/styles/main.css?v=2.1.0">
+  <link rel="stylesheet" href="./src/styles/main.css?v=3.0.0">
 </head>
 <body class="app-body">
   <div id="app" class="crm-container">
     <!-- Top System Command Header -->
     <header class="crm-header">
       <div class="header-left">
-        <div class="brand-badge">
-          <span class="brand-logo-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20"/><circle cx="18" cy="6" r="2.5" fill="#10b981"/></svg>
-          </span>
-          <span class="brand-name">Santasa IVF</span>
+        <!-- Mobile Menu Hamburger -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+
+        <a href="#today" class="brand-badge" id="brandHomeLink">
+          <img src="./santasa-logo.png" alt="Santasa Logo" class="brand-logo-img" />
+          <div class="brand-text-col">
+            <span class="brand-name">santasa</span>
+            <span class="brand-slogan">Spreading Happiness</span>
+          </div>
           <span class="crm-badge">CRM</span>
-        </div>
+        </a>
 
         <div class="branch-selector-wrapper">
           <svg class="branch-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -86,6 +92,13 @@
               <span class="nav-text">Today's Workspace</span>
               <span class="badge count-new" id="countTodayBadge">0</span>
             </a>
+            <a href="#reminders" class="nav-item" data-view="reminders" id="navReminders">
+              <span class="nav-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </span>
+              <span class="nav-text">Due Reminders</span>
+              <span class="badge count-due pulse-reminder" id="countRemindersBadge">0</span>
+            </a>
             <a href="#followups" class="nav-item" data-view="followups" id="navFollowups">
               <span class="nav-icon">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -138,7 +151,7 @@
       </aside>
 
       <!-- Center Leads Queue Column -->
-      <section class="crm-lead-queue-panel">
+      <section class="crm-lead-queue-panel" id="leadQueuePanel">
         <div class="queue-header">
           <div class="queue-title-row">
             <h2 id="queueTitle">Patient Leads Queue</h2>
@@ -169,6 +182,14 @@
 
       <!-- Right Active Patient Workspace -->
       <main class="crm-lead-detail-panel" id="leadDetailPanel">
+        <!-- Mobile Back Button -->
+        <div class="mobile-back-row">
+          <button class="mobile-back-btn" id="mobileBackToLeadsBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            <span>Back to Leads Queue</span>
+          </button>
+        </div>
+
         <!-- Lead Hero & Fast Action Header -->
         <div class="lead-hero-banner" id="leadHeroBanner">
           <div class="patient-identity">
@@ -198,303 +219,283 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
               <span class="btn-label">WHATSAPP</span>
             </button>
-            <button class="action-btn btn-followup" id="actionFollowupBtn" title="Schedule Follow-up">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
-              <span class="btn-label">SCHEDULE FOLLOW-UP</span>
+            <button class="action-btn btn-action-outline" id="actionFollowupBtn" title="Schedule Callback/Follow-up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>SCHEDULE FOLLOW-UP</span>
             </button>
-            <button class="action-btn btn-appointment" id="actionAppointmentBtn" title="Book Doctor Consultation">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-              <span class="btn-label">BOOK APPT</span>
+            <button class="action-btn btn-action-outline" id="actionApptBtn" title="Book Doctor Consultation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>BOOK APPT</span>
             </button>
-            <button class="action-btn btn-note" id="actionNoteBtn" title="Add Executive Note">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span class="btn-label">ADD NOTE</span>
+            <button class="action-btn btn-action-outline" id="actionNoteBtn" title="Add Consultation Note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>ADD NOTE</span>
             </button>
-            <button class="action-btn btn-outcome" id="actionOutcomeBtn" title="Doctor Outcome / Conversion">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              <span class="btn-label">OUTCOME</span>
+            <button class="action-btn btn-action-outline" id="actionOutcomeBtn" title="Record Treatment Outcome / Funnel Stage">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>OUTCOME</span>
             </button>
           </div>
         </div>
 
-        <!-- Next Follow-up Alert Banner -->
-        <div class="followup-alert-card" id="nextFollowupAlert" style="display:none;">
-          <div class="alert-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div class="alert-content">
-            <div class="alert-title">NEXT SCHEDULED ACTION</div>
-            <div class="alert-time" id="followupTimeDisplay">--</div>
-            <div class="alert-note" id="followupNoteDisplay">--</div>
-          </div>
-          <div class="alert-actions">
-            <button class="btn btn-sm btn-success" id="markFollowupDoneBtn">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              <span>Complete</span>
-            </button>
-            <button class="btn btn-sm btn-outline" id="rescheduleFollowupBtn">Reschedule</button>
-          </div>
-        </div>
+        <!-- 2-Column Split: Clinical Patient Context (Left) vs Real-Time Activity Feed (Right) -->
+        <div class="lead-workspace-body">
+          <div class="detail-card patient-details-card">
+            <h3>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Patient Medical & Lead Profile
+            </h3>
+            
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Full Name</span>
+                <span class="info-val" id="profileName">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Primary Contact</span>
+                <span class="info-val phone" id="profilePhone">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Age & Gender</span>
+                <span class="info-val" id="profileAgeGender">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Location / City</span>
+                <span class="info-val" id="profileCity">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Lead Source</span>
+                <span class="info-val" id="profileSource">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Department</span>
+                <span class="info-val" id="profileDept">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Next Scheduled Callback</span>
+                <span class="info-val highlight-callback" id="profileFollowup">--</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Assigned Executive</span>
+                <span class="info-val" id="profileExecutive">--</span>
+              </div>
+            </div>
 
-        <!-- Lead Activity Timeline -->
-        <div class="timeline-container">
-          <div class="timeline-header">
-            <h3 class="timeline-title">Activity Timeline & Call Recordings</h3>
-            <span class="timeline-sub">Live Chronological Audit Feed</span>
+            <div class="patient-notes-block">
+              <span class="info-label">Executive Clinical Notes</span>
+              <div class="notes-content" id="profileNotes">No initial notes logged.</div>
+            </div>
           </div>
 
-          <div class="timeline-feed" id="timelineFeed">
-            <div class="empty-state">Select a patient to view full activity history.</div>
+          <div class="detail-card timeline-card-wrapper">
+            <div class="timeline-header-row">
+              <h3>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Activity Timeline & Call Recordings
+              </h3>
+              <span class="timeline-sub-tag">Live Chronological Audit Feed</span>
+            </div>
+            
+            <div class="timeline-feed" id="timelineFeed">
+              <div class="empty-state">Select a lead to inspect medical interaction timeline.</div>
+            </div>
           </div>
         </div>
       </main>
     </div>
   </div>
 
-  <!-- MODAL: Add New Lead -->
+  <!-- FLOATING EXECUTIVE AUTO-REMINDER ALERT -->
+  <div id="executiveReminderBanner" class="executive-reminder-banner hidden">
+    <div class="reminder-pulse-icon">⏰</div>
+    <div class="reminder-content">
+      <div class="reminder-header">
+        <strong class="reminder-title">Callback Due Now</strong>
+        <span class="reminder-time" id="reminderDueTime">Just now</span>
+      </div>
+      <div class="reminder-patient" id="reminderPatientText">Patient: Pooja Sharma (+919876543210)</div>
+      <div class="reminder-note" id="reminderNoteText">Discuss IUI consultation charges & schedule appointment.</div>
+      <div class="reminder-actions">
+        <button class="action-btn btn-call btn-sm" id="reminderCallNowBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <span>Call Now</span>
+        </button>
+        <button class="action-btn btn-whatsapp btn-sm" id="reminderWhatsappBtn">
+          <span>WhatsApp</span>
+        </button>
+        <button class="action-btn btn-action-outline btn-sm" id="reminderSnoozeBtn">
+          <span>Snooze 15m</span>
+        </button>
+        <button class="btn-ghost" id="reminderDismissBtn" title="Dismiss Alert">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quick Lead Creation -->
   <div id="newLeadModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Create New Patient Lead</h3>
+        <h3>Create New Patient Inquiry</h3>
         <button class="modal-close" data-close="newLeadModal">✕</button>
       </div>
       <form id="newLeadForm" class="modal-body">
         <div class="form-group">
           <label>Patient Full Name *</label>
-          <input type="text" id="nlPatientName" required placeholder="e.g. Sayeda Tabasuma" />
+          <input type="text" id="inputPatientName" required placeholder="e.g. Pooja Sharma" />
         </div>
         <div class="form-group">
-          <label>Primary Phone Number (10 digits) *</label>
-          <input type="tel" id="nlPhone" required placeholder="e.g. 7676550644" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>City / Location</label>
-            <input type="text" id="nlCity" value="Hassan" />
-          </div>
-          <div class="form-group">
-            <label>Department</label>
-            <select id="nlDepartment">
-              <option value="Fertility & IVF">Fertility & IVF</option>
-              <option value="Gynaecology">Gynaecology</option>
-              <option value="Maternity">Maternity</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Lead Source</label>
-            <select id="nlSource">
-              <option value="Incoming Call">Incoming Call</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Meta Ads">Meta Ads</option>
-              <option value="Google Ads">Google Ads</option>
-              <option value="Website">Website</option>
-              <option value="Walk-in">Walk-in</option>
-              <option value="Referral">Referral</option>
-              <option value="Manual">Manual</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Priority</label>
-            <select id="nlPriority">
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
+          <label>Primary Phone Number (+91) *</label>
+          <input type="tel" id="inputPrimaryPhone" required placeholder="e.g. +91 98765 43210" />
         </div>
         <div class="form-group">
-          <label>Initial Enquiry Notes</label>
-          <textarea id="nlNotes" rows="3" placeholder="Enquired regarding IVF cycle cost and appointment..."></textarea>
+          <label>Location / City</label>
+          <input type="text" id="inputCity" placeholder="e.g. Hassan, Mysore, Bangalore" />
+        </div>
+        <div class="form-group">
+          <label>Department / Medical Interest</label>
+          <select id="inputDepartment">
+            <option value="Fertility & IVF" selected>Fertility & IVF</option>
+            <option value="Gynecology & Obstetrics">Gynecology & Obstetrics</option>
+            <option value="IUI Treatment">IUI Treatment</option>
+            <option value="Laparoscopy">Laparoscopy</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Lead Priority</label>
+          <select id="inputPriority">
+            <option value="High" selected>High (Urgent Callback)</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Initial Clinical Notes</label>
+          <textarea id="inputNotes" rows="3" placeholder="Symptoms, caller background, medical history..."></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close="newLeadModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveNewLeadBtn">Save Patient Lead</button>
+          <button type="submit" class="btn btn-primary">Create Patient Lead</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Add Executive Note -->
-  <div id="addNoteModal" class="modal-overlay hidden">
+  <!-- MODAL: Schedule Follow-up / Callback Reminder -->
+  <div id="followupModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Add Executive Note</h3>
-        <button class="modal-close" data-close="addNoteModal">✕</button>
+        <h3>Schedule Patient Callback Reminder</h3>
+        <button class="modal-close" data-close="followupModal">✕</button>
       </div>
-      <form id="addNoteForm" class="modal-body">
+      <form id="followupForm" class="modal-body">
         <div class="form-group">
-          <label>Patient Context</label>
-          <input type="text" id="notePatientName" readonly disabled class="input-disabled" />
+          <label>Callback Date & Time *</label>
+          <input type="datetime-local" id="inputFollowupDate" required />
         </div>
         <div class="form-group">
-          <label>Executive Note *</label>
-          <textarea id="noteContentInput" rows="4" required placeholder="Patient requested IVF package breakdown and doctor consultation details..."></textarea>
+          <label>Reminder Objective / Notes *</label>
+          <textarea id="inputFollowupNote" rows="3" required placeholder="e.g. Call patient to discuss test results, IUI procedure costs, and confirm doctor slot..."></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="addNoteModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveNoteBtn">Add to Timeline</button>
+          <button type="button" class="btn btn-secondary" data-close="followupModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Set Reminder & Schedule</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Schedule Follow-up -->
-  <div id="scheduleFollowupModal" class="modal-overlay hidden">
+  <!-- MODAL: Book Doctor Appointment -->
+  <div id="apptModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Schedule Patient Follow-up</h3>
-        <button class="modal-close" data-close="scheduleFollowupModal">✕</button>
+        <h3>Book Clinic Consultation</h3>
+        <button class="modal-close" data-close="apptModal">✕</button>
       </div>
-      <form id="scheduleFollowupForm" class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Follow-up Date *</label>
-            <input type="date" id="fuDateInput" required />
-          </div>
-          <div class="form-group">
-            <label>Follow-up Time *</label>
-            <input type="time" id="fuTimeInput" required value="10:30" />
-          </div>
-        </div>
+      <form id="apptForm" class="modal-body">
         <div class="form-group">
-          <label>Channel / Type</label>
-          <select id="fuTypeSelect">
-            <option value="Call">Phone Call</option>
-            <option value="WhatsApp">WhatsApp Message</option>
-            <option value="Consultation Review">Consultation Review</option>
-            <option value="Lab Report Discussion">Lab Report Discussion</option>
+          <label>Doctor / Specialist *</label>
+          <select id="inputDoctor">
+            <option value="Dr. Soumya (Fertility Specialist)" selected>Dr. Soumya (Fertility Specialist)</option>
+            <option value="Dr. Anil Kumar (Andrologist)">Dr. Anil Kumar (Andrologist)</option>
+            <option value="Dr. Rekha (Gynecologist)">Dr. Rekha (Gynecologist)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Purpose & Executive Notes *</label>
-          <textarea id="fuNotesInput" rows="3" required placeholder="Follow up to confirm semen analysis / scan appointment..."></textarea>
+          <label>Hospital Branch *</label>
+          <select id="inputApptBranch">
+            <option value="Hassan Main Hospital" selected>Hassan Main Hospital</option>
+            <option value="Mysore Center">Mysore Center</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Appointment Date & Time *</label>
+          <input type="datetime-local" id="inputApptDate" required />
+        </div>
+        <div class="form-group">
+          <label>Appointment Type</label>
+          <select id="inputApptType">
+            <option value="In-Person Consultation" selected>In-Person Consultation</option>
+            <option value="Ultrasound & Scan">Ultrasound & Scan</option>
+            <option value="Semen Analysis">Semen Analysis</option>
+            <option value="IVF Protocol Counseling">IVF Protocol Counseling</option>
+          </select>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="scheduleFollowupModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveFollowupBtn">Schedule Follow-up</button>
+          <button type="button" class="btn btn-secondary" data-close="apptModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Confirm Appointment</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Book Appointment -->
-  <div id="bookAppointmentModal" class="modal-overlay hidden">
+  <!-- MODAL: Add Consultation Note -->
+  <div id="noteModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Book Doctor Consultation</h3>
-        <button class="modal-close" data-close="bookAppointmentModal">✕</button>
+        <h3>Add Clinical Consultation Note</h3>
+        <button class="modal-close" data-close="noteModal">✕</button>
       </div>
-      <form id="bookAppointmentForm" class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Consulting Doctor *</label>
-            <select id="apptDoctorSelect" required>
-              <option value="Dr. Soumya Dinesh (Senior IVF Specialist)">Dr. Soumya Dinesh (Senior IVF Specialist)</option>
-              <option value="Dr. Ramesh (Consultant Gynecologist)">Dr. Ramesh (Consultant Gynecologist)</option>
-              <option value="Dr. Kavitha (Fertility Specialist)">Dr. Kavitha (Fertility Specialist)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Department</label>
-            <input type="text" id="apptDeptInput" value="Fertility & IVF" readonly />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Appointment Date *</label>
-            <input type="date" id="apptDateInput" required />
-          </div>
-          <div class="form-group">
-            <label>Slot Time *</label>
-            <input type="time" id="apptTimeInput" required value="11:00" />
-          </div>
-        </div>
+      <form id="noteForm" class="modal-body">
         <div class="form-group">
-          <label>Clinical & Consultation Notes</label>
-          <textarea id="apptNotesInput" rows="3" placeholder="Primary infertility workup, AMH test review..."></textarea>
+          <label>Interaction Summary / Medical Findings *</label>
+          <textarea id="inputNoteText" rows="4" required placeholder="Patient discussed prior IVF attempts, semen analysis prescribed, requested brochure..."></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="bookAppointmentModal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="saveAppointmentBtn">Confirm Appointment</button>
+          <button type="button" class="btn btn-secondary" data-close="noteModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to Timeline</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Doctor Outcome & Conversion -->
-  <div id="consultationOutcomeModal" class="modal-overlay hidden">
+  <!-- MODAL: Lead Outcome / Funnel Progression -->
+  <div id="outcomeModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <div class="modal-header" style="background:#0f172a; color:#fff;">
-        <h3 style="color:#fff;">Doctor Consultation Outcome & Treatment Conversion</h3>
-        <button class="modal-close" data-close="consultationOutcomeModal" style="color:#fff;">✕</button>
+      <div class="modal-header">
+        <h3>Record Lead Outcome & Stage</h3>
+        <button class="modal-close" data-close="outcomeModal">✕</button>
       </div>
-      <form id="consultationOutcomeForm" class="modal-body">
+      <form id="outcomeForm" class="modal-body">
         <div class="form-group">
-          <label>Consultation Decision / Status *</label>
-          <select id="outcomeStatusSelect" required>
-            <option value="Treatment Booked / Converted">Treatment Booked / Converted (Deposit Paid)</option>
-            <option value="Need Second Opinion">Need Second Opinion / Thinking</option>
-            <option value="Advised Diagnostics / Hysteroscopy">Advised Diagnostics / Hysteroscopy</option>
-            <option value="Follow-up After Medication">Follow-up After Medication</option>
-            <option value="Lost / Not Interested">Lost / Not Interested</option>
+          <label>Updated Lead Status *</label>
+          <select id="inputOutcomeStatus">
+            <option value="Converted (Under Treatment)">🏆 Converted (Under Treatment)</option>
+            <option value="Appointment Scheduled">📅 Appointment Scheduled</option>
+            <option value="Follow-up Needed" selected>⏳ Follow-up Needed</option>
+            <option value="Not Interested / Lost">❌ Not Interested / Lost</option>
           </select>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Recommended / Converted Service</label>
-            <input type="text" id="outcomeServiceInput" placeholder="e.g. Self-Oocyte IVF with ICSI Cycle 1" value="Self-Oocyte IVF with ICSI Cycle 1" />
-          </div>
-          <div class="form-group">
-            <label>Conversion Value (INR ₹)</label>
-            <input type="number" id="outcomeConversionValInput" placeholder="e.g. 180000" value="180000" />
-          </div>
+        <div class="form-group" id="treatmentRevenueGroup">
+          <label>Estimated Treatment Value (₹ INR)</label>
+          <input type="number" id="inputRevenue" placeholder="e.g. 150000 for IVF Cycle" />
         </div>
         <div class="form-group">
-          <label>Estimated Value (INR ₹)</label>
-          <input type="number" id="outcomeEstimatedValInput" placeholder="e.g. 200000" value="200000" />
-        </div>
-        <div class="form-group">
-          <label>Doctor's Summary & Executive Remarks *</label>
-          <textarea id="outcomeSummaryInput" rows="3" required placeholder="Patient agreed for ICSI cycle, initial advance received at reception."></textarea>
+          <label>Outcome Remarks</label>
+          <textarea id="inputOutcomeNotes" rows="3" placeholder="Patient agreed to begin stimulation protocol next cycle..."></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="consultationOutcomeModal">Cancel</button>
-          <button type="submit" class="btn btn-success" id="saveOutcomeBtn">Record Outcome & Revenue</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: WhatsApp Message Dispatch -->
-  <div id="whatsappModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header" style="background:#059669; color:#fff;">
-        <h3 style="color:#fff;">Dispatch WhatsApp Message</h3>
-        <button class="modal-close" data-close="whatsappModal" style="color:#fff;">✕</button>
-      </div>
-      <form id="whatsappForm" class="modal-body">
-        <div class="form-group">
-          <label>Recipient Patient Phone</label>
-          <input type="text" id="waRecipientPhone" readonly class="input-disabled" />
-        </div>
-        <div class="form-group">
-          <label>Template</label>
-          <select id="waTemplateSelect">
-            <option value="appointment_confirmation">Appointment Confirmation</option>
-            <option value="followup_reminder">Follow-up Reminder & Guidance</option>
-            <option value="treatment_brochure">IVF Treatment & Package Details</option>
-            <option value="custom_message">Custom Message</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Message Preview</label>
-          <textarea id="waMessageBody" rows="5" required></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="whatsappModal">Cancel</button>
-          <button type="submit" class="btn btn-success" id="sendWhatsappBtn" style="background:#059669;">Send WhatsApp</button>
+          <button type="button" class="btn btn-secondary" data-close="outcomeModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Record Outcome</button>
         </div>
       </form>
     </div>
@@ -502,20 +503,19 @@
 
   <!-- MODAL: Live Call Telephony Overlay -->
   <div id="liveCallModal" class="modal-overlay hidden">
-    <div class="modal-card call-overlay-card">
-      <div class="call-avatar-pulse">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    <div class="modal-card" style="text-align: center; padding: 2rem; max-width: 380px;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--brand-purple-100); color: var(--brand-purple); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; animation: pulse-pink 1.5s infinite;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       </div>
-      <h3 id="callPatientName">Calling Patient...</h3>
-      <p id="callPatientPhone" class="call-phone">+91 0000000000</p>
-      <div class="call-timer" id="callTimer">00:00</div>
-      <div class="call-recording-notice">
-        <span class="rec-dot"></span> Call is being automatically recorded
+      <h3 id="callPatientName" style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">Calling Patient...</h3>
+      <p id="callPatientPhone" style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-purple); margin: 6px 0 12px;">+91 0000000000</p>
+      <div id="callTimer" style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 800; color: var(--brand-pink); margin-bottom: 1rem;">00:00</div>
+      <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger-600); margin-right: 4px;"></span> Automatic Recording & MacroDroid Sync Active
       </div>
-      <div class="call-actions-row">
-        <button class="btn btn-danger btn-end-call" id="endCallBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          <span>End Call</span>
+      <div>
+        <button class="btn btn-primary" id="endCallBtn" style="background: var(--danger-600); width: 100%; padding: 0.75rem;">
+          End Call & Save Recording
         </button>
       </div>
     </div>
@@ -524,32 +524,32 @@
   <!-- MODAL: Performance & Funnel Analytics Dashboard -->
   <div id="reportsModal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 680px;">
-      <div class="modal-header" style="background:#0f172a; color:#fff;">
-        <h3 style="color:#fff;">Hospital Lead Conversion & Revenue Analytics</h3>
-        <button class="modal-close" data-close="reportsModal" style="color:#fff;">✕</button>
+      <div class="modal-header" style="background: var(--brand-purple); color: #fff;">
+        <h3 style="color: #fff;">Hospital Lead Conversion & Revenue Analytics</h3>
+        <button class="modal-close" data-close="reportsModal" style="color: #fff;">✕</button>
       </div>
       <div class="modal-body" style="gap: 1.25rem;">
-        <div class="analytics-stat-grid">
-          <div class="stat-box">
-            <span class="stat-label">Total Revenue</span>
-            <strong class="stat-value" id="statTotalRevenue">₹0</strong>
-            <span class="stat-sub">From Converted IVF Treatments</span>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Revenue</span>
+            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-purple); margin: 4px 0;" id="statTotalRevenue">₹0</strong>
+            <span style="font-size: 0.7rem; color: var(--text-secondary);">From Converted IVF Treatments</span>
           </div>
-          <div class="stat-box">
-            <span class="stat-label">Patient Conversions</span>
-            <strong class="stat-value" id="statTotalConversions">0</strong>
-            <span class="stat-sub">Completed Procedures</span>
+          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Patient Conversions</span>
+            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-pink); margin: 4px 0;" id="statTotalConversions">0</strong>
+            <span style="font-size: 0.7rem; color: var(--text-secondary);">Completed Procedures</span>
           </div>
-          <div class="stat-box">
-            <span class="stat-label">Funnel Conversion Rate</span>
-            <strong class="stat-value" id="statConversionRate">0%</strong>
-            <span class="stat-sub">Inquiry to Treatment</span>
+          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Conversion Rate</span>
+            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-teal-dark); margin: 4px 0;" id="statConversionRate">0%</strong>
+            <span style="font-size: 0.7rem; color: var(--text-secondary);">Inquiry to Treatment</span>
           </div>
         </div>
 
-        <div class="funnel-container">
-          <h4>Patient Lead Lifecycle Funnel</h4>
-          <div id="funnelStagesList" style="margin-top: 8px;"></div>
+        <div>
+          <h4 style="font-size: 0.92rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;">Patient Lead Lifecycle Funnel</h4>
+          <div id="funnelStagesList" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -560,28 +560,24 @@
 
   <!-- GATEWAY: Executive Authentication Screen -->
   <div id="loginModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1);">
-      <div class="modal-header" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; padding: 1.4rem 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="brand-logo-icon" style="background: rgba(16, 185, 129, 0.15); padding: 8px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 2v20M2 12h20"/><circle cx="18" cy="6" r="2.5" fill="#10b981"/></svg>
-          </span>
-          <div>
-            <h3 style="color: #fff; font-size: 1.1rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Santasa IVF & Hospital</h3>
-            <span style="font-size: 0.78rem; color: #94a3b8; font-weight: 500;">CRM Executive Workspace Gateway</span>
-          </div>
+    <div class="modal-card" style="max-width: 440px; box-shadow: var(--shadow-overlay); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-subtle);">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-dark)); color: #fff; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <img src="./santasa-logo.png" alt="Santasa IVF Logo" style="height: 52px; width: auto; background: #ffffff; padding: 6px 14px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+        <div>
+          <h3 style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Santasa IVF & Hospital</h3>
+          <span style="font-size: 0.8rem; color: var(--brand-pink-light); font-weight: 600;">Executive Patient Lead Workspace</span>
         </div>
       </div>
       <form id="loginForm" class="modal-body" style="padding: 1.5rem; gap: 1.1rem; background: #ffffff;">
-        <div style="font-size: 0.83rem; color: #64748b; line-height: 1.45;">
-          Authentication required. Sign in with your registered hospital credentials to access patient leads and telephony logs.
+        <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
+          Sign in with your registered hospital credentials to access patient leads and real-time call sync.
         </div>
         <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700; color: #334155;">Email Address *</label>
+          <label>Email Address *</label>
           <input type="email" id="loginEmailInput" required placeholder="executive@santasa.com" autocomplete="username" />
         </div>
         <div class="form-group">
-          <label style="font-size: 0.8rem; font-weight: 700; color: #334155;">Password *</label>
+          <label>Password *</label>
           <input type="password" id="loginPasswordInput" required placeholder="••••••••••••" autocomplete="current-password" />
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
@@ -592,19 +588,19 @@
             👑 Auto-fill Admin
           </button>
         </div>
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 6px;">
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 6px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="font-size: 0.72rem; color: #64748b; font-weight: 600;">API Server Endpoint</label>
-            <button type="button" id="toggleApiSettingsBtn" style="background: none; border: none; font-size: 0.72rem; color: #2563eb; cursor: pointer; text-decoration: underline;">Configure</button>
+            <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">API Server Endpoint</label>
+            <button type="button" id="toggleApiSettingsBtn" style="background: none; border: none; font-size: 0.72rem; color: var(--brand-purple); cursor: pointer; text-decoration: underline; font-weight: 700;">Configure</button>
           </div>
           <div id="apiSettingsContainer" style="display: none; margin-top: 6px;">
-            <input type="text" id="customApiUrlInput" placeholder="https://santasa-crm-api.onrender.com/api/v1" style="font-size: 0.78rem; padding: 6px 10px; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px;" />
-            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px;">Paste your Render API URL or leave blank for default /api/v1</div>
+            <input type="text" id="customApiUrlInput" placeholder="https://santasa-crm.onrender.com/api/v1" style="font-size: 0.78rem; padding: 6px 10px; width: 100%; border: 1px solid var(--border-medium); border-radius: 6px;" />
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Paste Render API URL or leave default</div>
           </div>
         </div>
         <div class="modal-footer" style="padding: 0; background: transparent; border: none; margin-top: 0.6rem;">
-          <button type="submit" class="btn btn-primary" id="submitLoginBtn" style="width: 100%; padding: 0.7rem; font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <button type="submit" class="btn btn-primary" id="submitLoginBtn" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(104, 51, 129, 0.3);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Sign In to Workspace
           </button>
         </div>
@@ -615,6 +611,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script type="module" src="./src/app.js?v=2.1.0"></script>
+  <script type="module" src="./src/app.js?v=3.0.0"></script>
 </body>
 </html>
