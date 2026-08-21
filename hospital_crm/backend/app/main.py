@@ -32,23 +32,35 @@ from app.modules.communication.router import router as communication_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and graceful shutdown."""
+    import os
     logger.info(f"Starting {settings.APP_NAME} in [{settings.APP_ENV}] mode...")
     
-    # Create DB tables if not exist (handled via Alembic in prod)
-    Base.metadata.create_all(bind=engine)
+    # Create DB tables if not exist
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.warning(f"Database connection initialization note: {e}")
     
-    # Start background task queue and scheduler
-    task_queue.start()
-    scheduler_engine.start()
+    # Only start persistent background worker threads in standalone/daemon mode (skip in serverless)
+    is_serverless = os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("SERVERLESS")
+    if not is_serverless:
+        try:
+            task_queue.start()
+            scheduler_engine.start()
+            logger.info("Application background worker threads initialized.")
+        except Exception as e:
+            logger.warning(f"Scheduler worker startup note: {e}")
     
-    logger.info("Application infrastructure initialized successfully.")
     yield
     
     # Graceful shutdown
-    logger.info("Initiating graceful shutdown...")
-    await scheduler_engine.stop()
-    await task_queue.stop()
-    logger.info("Application shutdown complete.")
+    if not is_serverless:
+        try:
+            await scheduler_engine.stop()
+            await task_queue.stop()
+            logger.info("Application shutdown complete.")
+        except Exception as e:
+            logger.warning(f"Shutdown cleanup note: {e}")
 
 
 def create_app() -> FastAPI:
@@ -96,12 +108,15 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, generic_exception_handler)
 
     # Root Health Ping
+    @app.get("/api", tags=["Health"])
     @app.get("/api/health", tags=["Health"])
+    @app.get("/api/v1/health", tags=["Health"])
     async def root_health():
         return {
             "status": "healthy",
             "app": settings.APP_NAME,
-            "env": settings.APP_ENV
+            "env": settings.APP_ENV,
+            "version": "1.0.0"
         }
 
     # Register Domain Modules
