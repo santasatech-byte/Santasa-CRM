@@ -43,14 +43,15 @@ async def lifespan(app: FastAPI):
     import os
     logger.info(f"Starting {settings.APP_NAME} in [{settings.APP_ENV}] mode...")
     
-    # Create DB tables if not exist
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        logger.warning(f"Database connection initialization note: {e}")
+    # Only run create_all on local SQLite (tables already exist in Supabase Cloud)
+    if "sqlite" in settings.DATABASE_URL.lower():
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            logger.warning(f"Local SQLite schema note: {e}")
     
     # Only start persistent background worker threads in standalone/daemon mode (skip in serverless)
-    is_serverless = os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("SERVERLESS")
+    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("SERVERLESS"))
     if not is_serverless:
         try:
             task_queue.start()
