@@ -1,6 +1,15 @@
 {
   "version": 2,
-  "framework": "vite",
   "buildCommand": "cd hospital_crm/frontend && npm install && npm run build",
-  "outputDirectory": "hospital_crm/frontend/dist"
+  "outputDirectory": "hospital_crm/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
