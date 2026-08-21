@@ -7,7 +7,7 @@ import os
 import shutil
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status, HTTPException
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -28,53 +28,112 @@ MEDIA_DIR = LOCAL_MEDIA_DIR
 
 @router.api_route("/call-log", methods=["GET", "POST"], status_code=status.HTTP_201_CREATED)
 async def sync_mobile_call_log(
-    phone_number: Optional[str] = Form(None),
-    direction: Optional[str] = Form("Incoming"),
-    duration_seconds: Optional[int] = Form(0),
-    call_timestamp: Optional[str] = Form(None),
-    notes: Optional[str] = Form(None),
-    recording_file: Optional[UploadFile] = File(None),
-    # Also support Query parameters for GET or simple webhooks
+    request: Request,
+    phone_number: Optional[str] = None,
+    direction: Optional[str] = None,
+    duration_seconds: Optional[int] = None,
+    call_timestamp: Optional[str] = None,
+    notes: Optional[str] = None,
     phone: Optional[str] = None,
     caller: Optional[str] = None,
     number: Optional[str] = None,
     duration: Optional[int] = None,
+    call_type: Optional[str] = None,
+    recording_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     """
     Universal mobile sync endpoint:
-    Accepts GET, POST (Form-data, URL-encoded, or Query params) from MacroDroid, Automate, or Tasker.
+    Accepts GET, POST (Form-data, URL-encoded, Query params, or JSON body) from MacroDroid, Automate, or Tasker.
     """
-    raw_phone = phone_number or phone or caller or number or ""
+    # 1. Gather all inputs from query parameters
+    raw_data = dict(request.query_params)
+    
+    # 2. Check JSON payload if applicable
+    try:
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            json_body = await request.json()
+            if isinstance(json_body, dict):
+                raw_data.update(json_body)
+    except Exception:
+        pass
+
+    # 3. Check Form body if applicable
+    try:
+        form_body = await request.form()
+        for k, v in form_body.items():
+            if isinstance(v, str):
+                raw_data[k] = v
+    except Exception:
+        pass
+
+    # Extract phone number
+    raw_phone = (
+        raw_data.get("phone_number")
+        or raw_data.get("phone")
+        or raw_data.get("caller")
+        or raw_data.get("number")
+        or raw_data.get("from_number")
+        or phone_number or phone or caller or number or ""
+    ).strip()
+
     if not raw_phone:
         return {
             "status": "ready",
             "message": "Santasa IVF Mobile Sync Ingestion Gateway is Active & Online. Send phone_number & duration_seconds to log calls."
         }
 
-    dur_sec = duration_seconds if duration_seconds is not None else (duration or 0)
+    # Extract duration
+    raw_dur = (
+        raw_data.get("duration_seconds")
+        or raw_data.get("duration")
+        or duration_seconds
+        or duration
+        or 0
+    )
+    try:
+        dur_sec = int(float(str(raw_dur).strip()))
+    except Exception:
+        dur_sec = 0
+
+    # Extract direction
+    raw_dir = str(
+        raw_data.get("direction")
+        or raw_data.get("call_type")
+        or direction
+        or call_type
+        or "Incoming"
+    ).strip()
+    dir_enum = CallDirectionEnum.INCOMING.value if "in" in raw_dir.lower() else CallDirectionEnum.OUTGOING.value
+
+    # Extract notes
+    raw_notes = raw_data.get("notes") or notes or "Auto-synced via Mobile Phone"
+
+    # Normalize phone
     normalized_phone = telephony_adapter.normalize_phone_number(raw_phone)
     if not normalized_phone or len(normalized_phone) < 8:
-        normalized_phone = raw_phone.replace("+", "").replace(" ", "")
+        normalized_phone = raw_phone.replace("+", "").replace(" ", "").replace("-", "")
 
-    # 1. Match or Create Lead
+    # 1. Match or Create Lead in Database
     lead_stmt = select(Lead).where(
         Lead.normalized_phone == normalized_phone,
         Lead.is_archived == False
     ).order_by(Lead.created_at.desc())
     lead = db.scalars(lead_stmt).first()
 
+    suffix = raw_phone[-4:] if len(raw_phone) >= 4 else raw_phone
     if not lead:
         lead = Lead(
-            patient_name=f"Mobile Inquiry {phone_number[-4:]}",
-            primary_phone=phone_number,
+            patient_name=f"Mobile Inquiry {suffix}",
+            primary_phone=raw_phone,
             normalized_phone=normalized_phone,
             city="Hassan",
-            lead_source=LeadSourceEnum.INCOMING_CALL.value if "in" in direction.lower() else LeadSourceEnum.MANUAL.value,
+            lead_source=LeadSourceEnum.INCOMING_CALL.value if dir_enum == CallDirectionEnum.INCOMING.value else LeadSourceEnum.MANUAL.value,
             department="Fertility & IVF",
             lead_status=LeadStatusEnum.NEW.value,
             priority=LeadPriorityEnum.HIGH.value,
-            notes=f"Auto-created from Mobile Phone Sync ({direction})"
+            notes=f"Auto-created from Mobile Phone Sync ({dir_enum})"
         )
         db.add(lead)
         db.flush()
@@ -86,34 +145,35 @@ async def sync_mobile_call_log(
     saved_filename = None
 
     if recording_file and recording_file.filename:
-        file_bytes = await recording_file.read()
-        if len(file_bytes) > 0:
-            recording_url, saved_filename = await storage_adapter.upload_recording(
-                file_bytes=file_bytes,
-                original_filename=recording_file.filename,
-                content_type=recording_file.content_type or "audio/mpeg"
-            )
-            rec_status = RecordingStatusEnum.AVAILABLE.value
+        try:
+            file_bytes = await recording_file.read()
+            if len(file_bytes) > 0:
+                recording_url, saved_filename = await storage_adapter.upload_recording(
+                    file_bytes=file_bytes,
+                    original_filename=recording_file.filename,
+                    content_type=recording_file.content_type or "audio/mpeg"
+                )
+                rec_status = RecordingStatusEnum.AVAILABLE.value
+        except Exception as e:
+            logger.warning(f"Recording upload error: {e}")
 
     # 3. Create Call Entity
     external_call_id = f"mob_{uuid.uuid4().hex[:12]}"
-    dir_enum = CallDirectionEnum.INCOMING.value if "in" in direction.lower() else CallDirectionEnum.OUTGOING.value
-    
     call = Call(
         external_call_id=external_call_id,
         lead_id=lead.id,
-        phone_number=phone_number,
+        phone_number=raw_phone,
         normalized_phone=normalized_phone,
         direction=dir_enum,
         started_at=datetime.now(timezone.utc),
         ended_at=datetime.now(timezone.utc),
-        duration=duration_seconds,
+        duration=dur_sec,
         status=CallStatusEnum.COMPLETED.value,
         recording_status=rec_status,
         recording_url=recording_url,
-        recording_duration=duration_seconds,
+        recording_duration=dur_sec,
         provider="mobile_sim_direct",
-        provider_metadata={"notes": notes, "filename": saved_filename}
+        provider_metadata={"notes": raw_notes, "filename": saved_filename}
     )
     db.add(call)
 
@@ -128,10 +188,10 @@ async def sync_mobile_call_log(
         lead_id=lead.id,
         activity_type=ActivityTypeEnum.CALL_LOGGED,
         title=f"Direct Mobile Call ({dir_enum})",
-        description=f"Direct SIM call on mobile phone. Duration: {duration_seconds}s. {'Recording attached.' if recording_url else 'No recording.'}",
+        description=f"Direct SIM call on mobile phone. Duration: {dur_sec}s. {'Recording attached.' if recording_url else 'No recording.'}",
         metadata={
             "call_id": call.id,
-            "duration": duration_seconds,
+            "duration": dur_sec,
             "recording_url": recording_url,
             "recording_status": rec_status,
             "direction": dir_enum
@@ -143,15 +203,16 @@ async def sync_mobile_call_log(
         "call_id": call.id,
         "lead_id": lead.id,
         "patient_name": lead.patient_name,
-        "recording_url": recording_url,
-        "duration_seconds": duration_seconds
+        "phone_number": raw_phone,
+        "direction": dir_enum,
+        "duration_seconds": dur_sec,
+        "recording_url": recording_url
     }
 
 
 @router.get("/recordings/{filename}", status_code=status.HTTP_200_OK)
 async def stream_call_recording(filename: str):
     """Streams the local call recording audio file (.mp3/.m4a/.wav) for playback in CRM."""
-    # Prevent path traversal attacks
     clean_filename = os.path.basename(filename)
     filepath = os.path.join(MEDIA_DIR, clean_filename)
     if not os.path.exists(filepath):
