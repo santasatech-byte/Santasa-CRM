@@ -3,7 +3,7 @@
  * Fully dynamic: Directly integrated with FastAPI & Supabase PostgreSQL & Audio Storage
  */
 
-const API_BASE = window.VITE_API_URL || "/api/v1";
+let API_BASE = localStorage.getItem("crm_api_url") || window.VITE_API_URL || "/api/v1";
 
 let authToken = localStorage.getItem("supabase_access_token") || localStorage.getItem("crm_auth_token") || null;
 let refreshToken = localStorage.getItem("supabase_refresh_token") || null;
@@ -1030,7 +1030,32 @@ function getActiveLeadOrFirst() {
       const emailInput = document.getElementById("loginEmailInput");
       const passInput = document.getElementById("loginPasswordInput");
       if (emailInput) emailInput.value = "admin@santasa.com";
-      if (passInput) passInput.value = "Santasa@Admin2026!";
+      if (passInput) passInput.value = "Admin@2026!";
+    });
+  }
+
+  // API Server Configuration Toggle
+  const toggleApiBtn = document.getElementById("toggleApiSettingsBtn");
+  const apiContainer = document.getElementById("apiSettingsContainer");
+  const customApiInput = document.getElementById("customApiUrlInput");
+  if (customApiInput) {
+    customApiInput.value = localStorage.getItem("crm_api_url") || "";
+    customApiInput.addEventListener("change", (e) => {
+      const val = e.target.value.trim().replace(/\/+$/, "");
+      if (val) {
+        localStorage.setItem("crm_api_url", val);
+        API_BASE = val;
+        showToast(`API Server set to: ${val}`, "info");
+      } else {
+        localStorage.removeItem("crm_api_url");
+        API_BASE = window.VITE_API_URL || "/api/v1";
+        showToast("Reset to default API endpoint.", "info");
+      }
+    });
+  }
+  if (toggleApiBtn && apiContainer) {
+    toggleApiBtn.addEventListener("click", () => {
+      apiContainer.style.display = apiContainer.style.display === "none" ? "block" : "none";
     });
   }
 

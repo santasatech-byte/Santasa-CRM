@@ -592,6 +592,16 @@
             👑 Auto-fill Admin
           </button>
         </div>
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 0.72rem; color: #64748b; font-weight: 600;">API Server Endpoint</label>
+            <button type="button" id="toggleApiSettingsBtn" style="background: none; border: none; font-size: 0.72rem; color: #2563eb; cursor: pointer; text-decoration: underline;">Configure</button>
+          </div>
+          <div id="apiSettingsContainer" style="display: none; margin-top: 6px;">
+            <input type="text" id="customApiUrlInput" placeholder="https://santasa-crm-api.onrender.com/api/v1" style="font-size: 0.78rem; padding: 6px 10px; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px;" />
+            <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px;">Paste your Render API URL or leave blank for default /api/v1</div>
+          </div>
+        </div>
         <div class="modal-footer" style="padding: 0; background: transparent; border: none; margin-top: 0.6rem;">
           <button type="submit" class="btn btn-primary" id="submitLoginBtn" style="width: 100%; padding: 0.7rem; font-size: 0.92rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
