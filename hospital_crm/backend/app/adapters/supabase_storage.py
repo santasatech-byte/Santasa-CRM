@@ -10,8 +10,19 @@ import httpx
 from app.core.config import settings
 from app.core.logging import logger
 
-LOCAL_MEDIA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "media", "recordings")
-os.makedirs(LOCAL_MEDIA_DIR, exist_ok=True)
+if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    LOCAL_MEDIA_DIR = "/tmp/recordings"
+else:
+    LOCAL_MEDIA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "media", "recordings")
+
+try:
+    os.makedirs(LOCAL_MEDIA_DIR, exist_ok=True)
+except Exception:
+    LOCAL_MEDIA_DIR = "/tmp/recordings"
+    try:
+        os.makedirs(LOCAL_MEDIA_DIR, exist_ok=True)
+    except Exception:
+        pass
 
 
 class SupabaseStorageAdapter:

@@ -148,6 +148,8 @@ def create_app() -> FastAPI:
     from fastapi.responses import FileResponse, JSONResponse
 
     base_dirs = [
+        os.path.abspath(os.path.join(os.getcwd(), "dist")),
+        os.path.abspath(os.path.join(os.getcwd(), "hospital_crm", "frontend", "dist")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dist")),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")),
