@@ -1,5 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "cd hospital_crm/frontend && npm install && npm run build && cd ../.. && node -e \"const fs=require('fs'); fs.cpSync('hospital_crm/frontend/dist', 'dist', {recursive: true});\"",
-  "outputDirectory": "dist"
+  "buildCommand": "cd hospital_crm/frontend && npm install && npm run build",
+  "outputDirectory": "hospital_crm/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
 }
