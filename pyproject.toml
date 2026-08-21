@@ -1,0 +1,2 @@
+[tool.vercel]
+entrypoint = "hospital_crm.backend.app.main:app"
