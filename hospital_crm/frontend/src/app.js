@@ -408,8 +408,8 @@ async function loadTimeline(leadId) {
       if (meta.recording_url) {
         let streamUrl = meta.recording_url;
         if (!streamUrl.startsWith("http")) {
-          const host = window.location.hostname || "localhost";
-          streamUrl = `http://${host}:8000${streamUrl}`;
+          const baseHost = API_BASE.includes("http") ? new URL(API_BASE).origin : "https://santasa-crm.onrender.com";
+          streamUrl = `${baseHost}${streamUrl}`;
         }
         audioPlayerHtml = `
           <div class="recording-player-box">
