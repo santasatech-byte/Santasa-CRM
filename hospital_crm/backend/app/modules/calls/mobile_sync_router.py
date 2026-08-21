@@ -139,7 +139,7 @@ async def sync_mobile_call_log(
         db.flush()
         logger.info(f"Auto-created new lead id={lead.id} from mobile sync.")
 
-    # 2. Save Recording File (Supabase Storage or Local)
+    # 2. Save Recording File (Multipart or Raw Binary File Body)
     recording_url = None
     rec_status = RecordingStatusEnum.UNAVAILABLE.value
     saved_filename = None
@@ -156,6 +156,22 @@ async def sync_mobile_call_log(
                 rec_status = RecordingStatusEnum.AVAILABLE.value
         except Exception as e:
             logger.warning(f"Recording upload error: {e}")
+    else:
+        # Check if MacroDroid sent raw binary audio file in the body
+        try:
+            content_type = request.headers.get("content-type", "")
+            if not ("application/x-www-form-urlencoded" in content_type or "application/json" in content_type):
+                raw_bytes = await request.body()
+                if len(raw_bytes) > 512:
+                    ext = ".m4a" if ("mp4" in content_type or "m4a" in content_type) else ".mp3"
+                    recording_url, saved_filename = await storage_adapter.upload_recording(
+                        file_bytes=raw_bytes,
+                        original_filename=f"rec_{suffix}_{uuid.uuid4().hex[:6]}{ext}",
+                        content_type="audio/mpeg"
+                    )
+                    rec_status = RecordingStatusEnum.AVAILABLE.value
+        except Exception as e:
+            logger.warning(f"Binary body recording upload note: {e}")
 
     # 3. Create Call Entity
     external_call_id = f"mob_{uuid.uuid4().hex[:12]}"
