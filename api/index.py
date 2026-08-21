@@ -1,11 +1,11 @@
 import os
 import sys
 
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-backend_dir = os.path.join(root_dir, "hospital_crm", "backend")
+_api_dir = os.path.dirname(os.path.abspath(__file__))
+_root_dir = os.path.dirname(_api_dir)
 
-for p in [backend_dir, root_dir]:
+for p in [_api_dir, _root_dir]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from app.main import app
+from api.app.main import app
