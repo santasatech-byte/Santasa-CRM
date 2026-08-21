@@ -98,11 +98,15 @@ async def sync_mobile_call_log(
     except Exception:
         dur_sec = 0
 
-    # Extract direction
+    # Extract direction (Correctly check prefix to avoid 'in' substring inside 'outgoing')
     raw_dir = str(raw_data.get("direction") or raw_data.get("call_type") or "Incoming").strip()
     if "[" in raw_dir or "call_type" in raw_dir:
         raw_dir = "Incoming"
-    dir_enum = CallDirectionEnum.INCOMING.value if "in" in raw_dir.lower() else CallDirectionEnum.OUTGOING.value
+    raw_dir_lower = raw_dir.lower()
+    if raw_dir_lower.startswith("out") or "dial" in raw_dir_lower or "made" in raw_dir_lower:
+        dir_enum = CallDirectionEnum.OUTGOING.value
+    else:
+        dir_enum = CallDirectionEnum.INCOMING.value
 
     # Extract notes
     raw_notes = raw_data.get("notes") or "Auto-synced via Mobile Phone"
