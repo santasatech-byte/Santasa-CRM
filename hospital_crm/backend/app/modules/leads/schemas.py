@@ -35,6 +35,18 @@ class LeadSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Reference Hospital CRM Fields
+    patient_type: Optional[str] = "Enquiry"
+    patient_id_mrn: Optional[str] = None
+    registered_number: Optional[str] = None
+    treatment: Optional[str] = None
+    message: Optional[str] = None
+    consultation_date: Optional[datetime] = None
+    surgery_date: Optional[datetime] = None
+    surgery_requirement: Optional[str] = None
+    surgery_details: Optional[str] = None
+    destination_number: Optional[str] = None
+
 
 class CreateLeadRequest(BaseModel):
     patient_name: str = Field(..., min_length=2, max_length=255)
@@ -45,15 +57,28 @@ class CreateLeadRequest(BaseModel):
     age: Optional[int] = None
     location: Optional[str] = None
     city: str = "Hassan"
-    lead_source: LeadSourceEnum = LeadSourceEnum.MANUAL
+    lead_source: str = "Manual"
     campaign: Optional[str] = None
     department: str = "Fertility & IVF"
     service_interested: Optional[str] = None
     branch_id: Optional[str] = None
     assigned_executive_id: Optional[str] = None
-    priority: LeadPriorityEnum = LeadPriorityEnum.MEDIUM
+    lead_status: Optional[str] = "New"
+    priority: Optional[str] = "Medium"
     next_followup_at: Optional[datetime] = None
     notes: Optional[str] = None
+
+    # Reference Hospital CRM Fields
+    patient_type: Optional[str] = "Enquiry"
+    patient_id_mrn: Optional[str] = None
+    registered_number: Optional[str] = None
+    treatment: Optional[str] = None
+    message: Optional[str] = None
+    consultation_date: Optional[datetime] = None
+    surgery_date: Optional[datetime] = None
+    surgery_requirement: Optional[str] = None
+    surgery_details: Optional[str] = None
+    destination_number: Optional[str] = None
 
 
 class UpdateLeadRequest(BaseModel):
@@ -64,16 +89,28 @@ class UpdateLeadRequest(BaseModel):
     age: Optional[int] = None
     location: Optional[str] = None
     city: Optional[str] = None
-    lead_source: Optional[LeadSourceEnum] = None
+    lead_source: Optional[str] = None
     department: Optional[str] = None
     service_interested: Optional[str] = None
     branch_id: Optional[str] = None
     assigned_executive_id: Optional[str] = None
-    lead_status: Optional[LeadStatusEnum] = None
-    priority: Optional[LeadPriorityEnum] = None
+    lead_status: Optional[str] = None
+    priority: Optional[str] = None
     next_followup_at: Optional[datetime] = None
     notes: Optional[str] = None
     is_archived: Optional[bool] = None
+
+    # Reference Hospital CRM Fields
+    patient_type: Optional[str] = None
+    patient_id_mrn: Optional[str] = None
+    registered_number: Optional[str] = None
+    treatment: Optional[str] = None
+    message: Optional[str] = None
+    consultation_date: Optional[datetime] = None
+    surgery_date: Optional[datetime] = None
+    surgery_requirement: Optional[str] = None
+    surgery_details: Optional[str] = None
+    destination_number: Optional[str] = None
 
 
 class LeadSearchRequest(BaseModel):

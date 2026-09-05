@@ -516,37 +516,66 @@ function renderActiveLead(lead) {
   if (deptEl) deptEl.textContent = lead.department || "Fertility & IVF";
 
   if (stageSelect) {
-    const st = lead.lead_status || "New";
-    if (st.includes("New")) stageSelect.value = "New";
-    else if (st.includes("Follow")) stageSelect.value = "Follow-up";
-    else if (st.includes("App")) stageSelect.value = "Appointment Booked";
-    else if (st.includes("Convert") || st.includes("Treatment")) stageSelect.value = "Converted (Under Treatment)";
-    else if (st.includes("Lost") || st.includes("Not")) stageSelect.value = "Not Interested / Lost";
-    else stageSelect.value = "New";
+    const st = lead.lead_status || "Valid - Need Appointment";
+    stageSelect.value = st;
+    // Fallback if not exact match
+    if (!stageSelect.value) {
+      const match = Array.from(stageSelect.options).find(o => o.value.toLowerCase().includes(st.toLowerCase()));
+      if (match) stageSelect.value = match.value;
+    }
   }
 
-  // Detailed profile tab
+  // General Information fields
   const pName = document.getElementById("profileName");
   const pPhone = document.getElementById("profilePhone");
+  const pRegPhone = document.getElementById("profileRegPhone");
+  const pPatientType = document.getElementById("profilePatientType");
+  const pPatientId = document.getElementById("profilePatientId");
+  const pEmail = document.getElementById("profileEmail");
   const pAgeGen = document.getElementById("profileAgeGender");
   const pCity = document.getElementById("profileCity");
-  const pSource = document.getElementById("profileSource");
+
+  if (pName) pName.textContent = lead.patient_name || "--";
+  if (pPhone) pPhone.textContent = lead.primary_phone || lead.normalized_phone || "--";
+  if (pRegPhone) pRegPhone.textContent = lead.registered_number || "--";
+  if (pPatientType) pPatientType.textContent = lead.patient_type || "Enquiry";
+  if (pPatientId) pPatientId.textContent = lead.patient_id_mrn || "--";
+  if (pEmail) pEmail.textContent = lead.email || "--";
+  if (pAgeGen) pAgeGen.textContent = `${lead.age ? lead.age + ' yrs' : 'Age: --'}, ${lead.gender || 'Female'}`;
+  if (pCity) pCity.textContent = lead.city || "Hassan";
+
+  // Clinical & Surgery details
+  const pTreatment = document.getElementById("profileTreatment");
   const pDept = document.getElementById("profileDept");
+  const pConsultDate = document.getElementById("profileConsultDate");
+  const pSurgeryDate = document.getElementById("profileSurgeryDate");
+  const pSurgeryDetails = document.getElementById("profileSurgeryDetails");
+  const pMessage = document.getElementById("profileMessage");
+
+  if (pTreatment) pTreatment.textContent = lead.treatment || lead.service_interested || "Fertility & IVF";
+  if (pDept) pDept.textContent = lead.department || "Fertility & IVF";
+  if (pConsultDate) pConsultDate.textContent = lead.consultation_date ? new Date(lead.consultation_date).toLocaleDateString([], { dateStyle: 'medium' }) : "--";
+  if (pSurgeryDate) pSurgeryDate.textContent = lead.surgery_date ? new Date(lead.surgery_date).toLocaleDateString([], { dateStyle: 'medium' }) : "--";
+  if (pSurgeryDetails) {
+    const req = lead.surgery_requirement ? `[Req: ${lead.surgery_requirement}] ` : '';
+    pSurgeryDetails.textContent = req + (lead.surgery_details || "None required");
+  }
+  if (pMessage) pMessage.textContent = lead.message || "--";
+
+  // Call & Assignment details
+  const pSource = document.getElementById("profileSource");
+  const pDestNumber = document.getElementById("profileDestNumber");
   const pFollowup = document.getElementById("profileFollowup");
   const pExec = document.getElementById("profileExecutive");
   const pNotes = document.getElementById("profileNotes");
 
-  if (pName) pName.textContent = lead.patient_name || "--";
-  if (pPhone) pPhone.textContent = lead.primary_phone || lead.normalized_phone || "--";
-  if (pAgeGen) pAgeGen.textContent = `${lead.age ? lead.age + ' yrs' : 'Age: --'}, ${lead.gender || 'Female'}`;
-  if (pCity) pCity.textContent = lead.city || "Hassan";
-  if (pSource) pSource.textContent = lead.lead_source || "Incoming Call";
-  if (pDept) pDept.textContent = lead.department || "Fertility & IVF";
+  if (pSource) pSource.textContent = lead.lead_source || "Mobile Call Direct";
+  if (pDestNumber) pDestNumber.textContent = lead.destination_number || "--";
   if (pFollowup) {
     pFollowup.textContent = lead.next_followup_at ? new Date(lead.next_followup_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : "None scheduled";
   }
   if (pExec) pExec.textContent = (currentExecutive && currentExecutive.full_name) || "Assigned Executive";
-  if (pNotes) pNotes.textContent = lead.notes || "No additional clinical notes recorded.";
+  if (pNotes) pNotes.textContent = lead.notes || "No clinical remarks recorded.";
 }
 
 function renderEmptyWorkspace() {
@@ -742,21 +771,41 @@ function setupEventHandlers() {
   const newLeadBtn = document.getElementById("newLeadBtn");
   if (newLeadBtn) {
     newLeadBtn.addEventListener("click", () => {
+      const inqDateInput = document.getElementById("inputInquiryDate");
+      if (inqDateInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        inqDateInput.value = now.toISOString().slice(0, 16);
+      }
       document.getElementById("newLeadModal").classList.remove("hidden");
     });
   }
 
-  // New Lead Form Submit
+  // New Lead Form Submit (Comprehensive Hospital Fields)
   const newLeadForm = document.getElementById("newLeadForm");
   if (newLeadForm) {
     newLeadForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById("inputPatientName").value.trim();
-      const phone = document.getElementById("inputPrimaryPhone").value.trim();
-      const city = document.getElementById("inputCity").value.trim() || "Hassan";
-      const dept = document.getElementById("inputDepartment").value;
-      const prio = document.getElementById("inputPriority").value;
-      const notes = document.getElementById("inputNotes").value.trim();
+      const name = document.getElementById("inputPatientName")?.value.trim();
+      const phone = document.getElementById("inputPrimaryPhone")?.value.trim();
+      const regPhone = document.getElementById("inputRegisteredPhone")?.value.trim() || null;
+      const email = document.getElementById("inputEmail")?.value.trim() || null;
+      const patientType = document.getElementById("inputPatientType")?.value || "Enquiry";
+      const patientId = document.getElementById("inputPatientId")?.value.trim() || null;
+      const treatment = document.getElementById("inputTreatment")?.value.trim() || null;
+      const message = document.getElementById("inputMessage")?.value.trim() || null;
+
+      const source = document.getElementById("inputLeadSource")?.value || "Mobile Call Direct";
+      const leadStatus = document.getElementById("inputLeadStatus")?.value || "Valid - Need Appointment";
+      const city = document.getElementById("inputCity")?.value.trim() || "Hassan";
+      const prio = document.getElementById("inputPriority")?.value || "High";
+
+      const consultDateVal = document.getElementById("inputConsultationDate")?.value;
+      const surgeryDateVal = document.getElementById("inputSurgeryDate")?.value;
+      const surgeryReq = document.getElementById("inputSurgeryRequirement")?.value.trim() || null;
+      const surgeryDetails = document.getElementById("inputSurgeryDetails")?.value.trim() || null;
+      const destNumber = document.getElementById("inputDestNumber")?.value.trim() || null;
+      const notes = document.getElementById("inputNotes")?.value.trim() || null;
 
       try {
         const lead = await apiRequest("/leads", {
@@ -764,10 +813,23 @@ function setupEventHandlers() {
           body: {
             patient_name: name,
             primary_phone: phone,
-            city,
-            department: dept,
+            registered_number: regPhone,
+            email: email,
+            patient_type: patientType,
+            patient_id_mrn: patientId,
+            treatment: treatment,
+            message: message,
+            lead_source: source,
+            lead_status: leadStatus,
+            city: city,
+            department: "Fertility & IVF",
             priority: prio,
-            notes: notes || "Direct Web Lead Entry"
+            consultation_date: consultDateVal ? new Date(consultDateVal).toISOString() : null,
+            surgery_date: surgeryDateVal ? new Date(surgeryDateVal).toISOString() : null,
+            surgery_requirement: surgeryReq,
+            surgery_details: surgeryDetails,
+            destination_number: destNumber,
+            notes: notes || "Direct SSM / Hospital Reference Entry"
           }
         });
         showToast("Patient lead created successfully!", "success");

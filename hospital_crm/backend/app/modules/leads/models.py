@@ -80,6 +80,18 @@ class Lead(BaseModel):
     updated_by: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Reference Hospital CRM Fields
+    patient_type: Mapped[Optional[str]] = mapped_column(String(50), default="Enquiry", nullable=True)
+    patient_id_mrn: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    registered_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    treatment: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    consultation_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    surgery_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    surgery_requirement: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    surgery_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    destination_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
     branch: Mapped[Optional["Branch"]] = relationship("Branch", foreign_keys=[branch_id])
     assigned_executive: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_executive_id])
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])

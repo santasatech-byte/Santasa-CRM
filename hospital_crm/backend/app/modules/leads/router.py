@@ -51,19 +51,30 @@ async def create_lead(
         age=request.age,
         location=request.location,
         city=request.city,
-        lead_source=request.lead_source.value,
+        lead_source=request.lead_source.value if hasattr(request.lead_source, "value") else str(request.lead_source),
         campaign=request.campaign,
         department=request.department,
         service_interested=request.service_interested,
         branch_id=request.branch_id or current_user.branch_id,
         assigned_executive_id=assigned_exec,
-        lead_status=LeadStatusEnum.NEW.value,
-        priority=request.priority.value,
+        lead_status=request.lead_status or "New",
+        priority=request.priority.value if hasattr(request.priority, "value") else str(request.priority),
         next_followup_at=request.next_followup_at,
         notes=request.notes,
         created_by=current_user.id,
         updated_by=current_user.id,
-        is_archived=False
+        is_archived=False,
+        # Reference Hospital CRM Fields
+        patient_type=request.patient_type or "Enquiry",
+        patient_id_mrn=request.patient_id_mrn,
+        registered_number=request.registered_number,
+        treatment=request.treatment,
+        message=request.message,
+        consultation_date=request.consultation_date,
+        surgery_date=request.surgery_date,
+        surgery_requirement=request.surgery_requirement,
+        surgery_details=request.surgery_details,
+        destination_number=request.destination_number
     )
     db.add(lead)
     db.commit()

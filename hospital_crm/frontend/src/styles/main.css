@@ -1507,3 +1507,83 @@ body.app-body {
   font-style: italic;
 }
 
+/* ==========================================================================
+   Hospital CRM Reference Standards (v3.2.0)
+   Multi-Section Medical Profile & High-Granularity Lead Modal
+   ========================================================================== */
+
+/* Profile Sub-Sections */
+.profile-sub-section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sub-section-title {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--brand-purple);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.highlight-treatment {
+  color: var(--brand-pink) !important;
+  font-weight: 700 !important;
+}
+
+/* Large Hospital Lead Creation Modal */
+.modal-card.modal-card-lg {
+  max-width: 840px;
+  width: 95vw;
+}
+
+.modal-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.modal-body-scrollable {
+  max-height: 75vh;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.form-section-header {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--brand-purple);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--brand-purple-50);
+  border-left: 3px solid var(--brand-purple);
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  margin: 14px 0 10px 0;
+}
+
+.form-section-header:first-of-type {
+  margin-top: 0;
+}
+
+.form-row-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .form-row-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

@@ -197,13 +197,35 @@
             <div class="patient-name-row">
               <h1 id="detailPatientName" class="patient-name">Select a Patient</h1>
               <div class="stage-select-wrapper">
-                <span class="stage-label">Stage:</span>
-                <select id="detailStageSelect" class="stage-dropdown-select" title="Change Patient Lead Stage">
-                  <option value="New">🟢 New Inbound</option>
-                  <option value="Follow-up">🟡 Follow-up Needed</option>
-                  <option value="Appointment Booked">📅 Consultation Booked</option>
-                  <option value="Converted (Under Treatment)">💖 IVF Under Treatment</option>
-                  <option value="Not Interested / Lost">⚪ Dropped / Lost</option>
+                <span class="stage-label">Status:</span>
+                <select id="detailStageSelect" class="stage-dropdown-select" title="Change Patient Lead Status">
+                  <optgroup label="✅ Valid Leads">
+                    <option value="Valid - Need Appointment">Valid - Need Appointment</option>
+                    <option value="Valid - Consultation done">Valid - Consultation done</option>
+                    <option value="Valid - Followup">Valid - Followup</option>
+                    <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
+                    <option value="Valid - Surgery done">Valid - Surgery done</option>
+                    <option value="Valid - Surgery Enquiry">Valid - Surgery Enquiry</option>
+                    <option value="Valid - Dropped pricing issue">Valid - Dropped pricing issue</option>
+                    <option value="Valid - Dropped location issue">Valid - Dropped location issue</option>
+                    <option value="Valid - Lost to compitition">Valid - Lost to compitition</option>
+                    <option value="Valid - Patient not willing now">Valid - Patient not willing now</option>
+                  </optgroup>
+                  <optgroup label="📋 Enquiries & Admin">
+                    <option value="Enquiry - Insurance">Enquiry - Insurance</option>
+                    <option value="Enquiry - Job Enquiry">Enquiry - Job Enquiry</option>
+                    <option value="Enquiry - Other">Enquiry - Other</option>
+                    <option value="Complaint">Complaint</option>
+                    <option value="Medical Reps">Medical Reps</option>
+                  </optgroup>
+                  <optgroup label="⚠️ Invalid / Ringing">
+                    <option value="Ringing no response">Ringing no response</option>
+                    <option value="Invalid - No response">Invalid - No response</option>
+                    <option value="Invalid - Did not enquire">Invalid - Did not enquire</option>
+                    <option value="Invalid - Out of network coverage">Invalid - Out of network coverage</option>
+                    <option value="Invalid - Switched off">Invalid - Switched off</option>
+                    <option value="Invalid - Wrong number">Invalid - Wrong number</option>
+                  </optgroup>
                 </select>
               </div>
               <span id="detailPriority" class="priority-pill priority-high">--</span>
@@ -253,47 +275,105 @@
           <div class="detail-card patient-details-card">
             <h3>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Patient Medical & Lead Profile
+              Patient Medical & Clinical Profile
             </h3>
             
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">Full Name</span>
-                <span class="info-val" id="profileName">--</span>
+            <!-- Section 1: General Information -->
+            <div class="profile-sub-section">
+              <span class="sub-section-title">General Information</span>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Patient Name</span>
+                  <span class="info-val" id="profileName">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Contact Number</span>
+                  <span class="info-val phone" id="profilePhone">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Registered Number</span>
+                  <span class="info-val" id="profileRegPhone">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Patient Type</span>
+                  <span class="info-val" id="profilePatientType">Enquiry</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Patient ID (MRN)</span>
+                  <span class="info-val" id="profilePatientId">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Email ID</span>
+                  <span class="info-val" id="profileEmail">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Age & Gender</span>
+                  <span class="info-val" id="profileAgeGender">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Location / City</span>
+                  <span class="info-val" id="profileCity">--</span>
+                </div>
               </div>
-              <div class="info-item">
-                <span class="info-label">Primary Contact</span>
-                <span class="info-val phone" id="profilePhone">--</span>
+            </div>
+
+            <!-- Section 2: Clinical & Surgery Details -->
+            <div class="profile-sub-section">
+              <span class="sub-section-title">Clinical & Surgery Details</span>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Treatment / Package</span>
+                  <span class="info-val highlight-treatment" id="profileTreatment">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Department</span>
+                  <span class="info-val" id="profileDept">Fertility & IVF</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Consultation Date</span>
+                  <span class="info-val" id="profileConsultDate">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Surgery Date</span>
+                  <span class="info-val" id="profileSurgeryDate">--</span>
+                </div>
+                <div class="info-item full-width">
+                  <span class="info-label">Surgery Requirement & Details</span>
+                  <span class="info-val" id="profileSurgeryDetails">None required</span>
+                </div>
+                <div class="info-item full-width">
+                  <span class="info-label">Inquiry Message</span>
+                  <span class="info-val" id="profileMessage">--</span>
+                </div>
               </div>
-              <div class="info-item">
-                <span class="info-label">Age & Gender</span>
-                <span class="info-val" id="profileAgeGender">--</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Location / City</span>
-                <span class="info-val" id="profileCity">--</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Lead Source</span>
-                <span class="info-val" id="profileSource">--</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Department</span>
-                <span class="info-val" id="profileDept">--</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Next Scheduled Callback</span>
-                <span class="info-val highlight-callback" id="profileFollowup">--</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Assigned Executive</span>
-                <span class="info-val" id="profileExecutive">--</span>
+            </div>
+
+            <!-- Section 3: Telephony & Call Details -->
+            <div class="profile-sub-section">
+              <span class="sub-section-title">Call & Executive Assignment</span>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Lead Source</span>
+                  <span class="info-val" id="profileSource">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Destination (SIM) Number</span>
+                  <span class="info-val" id="profileDestNumber">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Next Scheduled Callback</span>
+                  <span class="info-val highlight-callback" id="profileFollowup">--</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Assigned Executive</span>
+                  <span class="info-val" id="profileExecutive">--</span>
+                </div>
               </div>
             </div>
 
             <div class="patient-notes-block">
-              <span class="info-label">Executive Clinical Notes</span>
-              <div class="notes-content" id="profileNotes">No initial notes logged.</div>
+              <span class="info-label">Executive Clinical Remarks</span>
+              <div class="notes-content" id="profileNotes">No remarks logged.</div>
             </div>
           </div>
 
@@ -350,47 +430,161 @@
     </div>
   </div>
 
-  <!-- MODAL: Quick Lead Creation -->
+  <!-- MODAL: Comprehensive Hospital Lead Creation -->
   <div id="newLeadModal" class="modal-overlay hidden">
-    <div class="modal-card">
+    <div class="modal-card modal-card-lg">
       <div class="modal-header">
-        <h3>Create New Patient Inquiry</h3>
+        <div>
+          <h3>Create New Patient Lead</h3>
+          <p class="modal-subtitle">Fill up the below fields to create a new lead. * are mandatory fields.</p>
+        </div>
         <button class="modal-close" data-close="newLeadModal">✕</button>
       </div>
-      <form id="newLeadForm" class="modal-body">
-        <div class="form-group">
-          <label>Patient Full Name *</label>
-          <input type="text" id="inputPatientName" required placeholder="e.g. Pooja Sharma" />
+      <form id="newLeadForm" class="modal-body-scrollable">
+        <!-- Section: General Information -->
+        <div class="form-section-header">General Information</div>
+        <div class="form-row-grid">
+          <div class="form-group">
+            <label>Inquiry Date *</label>
+            <input type="datetime-local" id="inputInquiryDate" required />
+          </div>
+          <div class="form-group">
+            <label>Patient Name *</label>
+            <input type="text" id="inputPatientName" required placeholder="Full patient name" />
+          </div>
+          <div class="form-group">
+            <label>Contact Number (+91) *</label>
+            <input type="tel" id="inputPrimaryPhone" required placeholder="e.g. +91 98765 43210" />
+          </div>
+          <div class="form-group">
+            <label>Registered Number (Alternate)</label>
+            <input type="tel" id="inputRegisteredPhone" placeholder="Alternate contact number" />
+          </div>
+          <div class="form-group">
+            <label>Email ID</label>
+            <input type="email" id="inputEmail" placeholder="patient@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Patient Type</label>
+            <select id="inputPatientType">
+              <option value="Enquiry" selected>Enquiry</option>
+              <option value="New Patient">New Patient</option>
+              <option value="Existing Patient">Existing Patient</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Patient ID (MRN)</label>
+            <input type="text" id="inputPatientId" placeholder="e.g. SNT-2026-0042" />
+          </div>
+          <div class="form-group">
+            <label>Treatment / Package</label>
+            <input type="text" id="inputTreatment" placeholder="e.g. IVF Cycle, IUI, Laparoscopy, ICSI" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Primary Phone Number (+91) *</label>
-          <input type="tel" id="inputPrimaryPhone" required placeholder="e.g. +91 98765 43210" />
+
+        <div class="form-group full-width">
+          <label>Inquiry Message</label>
+          <textarea id="inputMessage" rows="2" placeholder="Specific patient query or inquiry details..."></textarea>
         </div>
-        <div class="form-group">
-          <label>Location / City</label>
-          <input type="text" id="inputCity" placeholder="e.g. Hassan, Mysore, Bangalore" />
+
+        <!-- Section: Source & Hospital Status -->
+        <div class="form-section-header">Channel Source & Lead Status</div>
+        <div class="form-row-grid">
+          <div class="form-group">
+            <label>Lead Source</label>
+            <select id="inputLeadSource">
+              <option value="Mobile Call Direct" selected>Mobile Call Direct</option>
+              <option value="IVR Call">IVR Call</option>
+              <option value="Chatbot - Website">Chatbot - Website</option>
+              <option value="Website - Contact Us">Website - Contact Us</option>
+              <option value="Website - Home">Website - Home</option>
+              <option value="Website - Book Appointment">Website - Book Appointment</option>
+              <option value="Website - Fertility & IVF">Website - Fertility & IVF</option>
+              <option value="Website - Laparoscopy">Website - Laparoscopy</option>
+              <option value="Website - Cardiology (Heart Care)">Website - Cardiology (Heart Care)</option>
+              <option value="Website - Orthopaedics">Website - Orthopaedics</option>
+              <option value="Website - Neonatology">Website - Neonatology</option>
+              <option value="Walk-in">Walk-in</option>
+              <option value="Referral">Referral</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Lead Status *</label>
+            <select id="inputLeadStatus" required>
+              <optgroup label="✅ Valid Leads">
+                <option value="Valid - Need Appointment" selected>Valid - Need Appointment</option>
+                <option value="Valid - Consultation done">Valid - Consultation done</option>
+                <option value="Valid - Followup">Valid - Followup</option>
+                <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
+                <option value="Valid - Surgery done">Valid - Surgery done</option>
+                <option value="Valid - Surgery Enquiry">Valid - Surgery Enquiry</option>
+                <option value="Valid - Dropped pricing issue">Valid - Dropped pricing issue</option>
+                <option value="Valid - Dropped location issue">Valid - Dropped location issue</option>
+                <option value="Valid - Lost to compitition">Valid - Lost to compitition</option>
+                <option value="Valid - Patient not willing now">Valid - Patient not willing now</option>
+              </optgroup>
+              <optgroup label="📋 Enquiries & Admin">
+                <option value="Enquiry - Insurance">Enquiry - Insurance</option>
+                <option value="Enquiry - Job Enquiry">Enquiry - Job Enquiry</option>
+                <option value="Enquiry - Other">Enquiry - Other</option>
+                <option value="Complaint">Complaint</option>
+                <option value="Medical Reps">Medical Reps</option>
+              </optgroup>
+              <optgroup label="⚠️ Invalid / Ringing">
+                <option value="Ringing no response">Ringing no response</option>
+                <option value="Invalid - No response">Invalid - No response</option>
+                <option value="Invalid - Did not enquire">Invalid - Did not enquire</option>
+                <option value="Invalid - Out of network coverage">Invalid - Out of network coverage</option>
+                <option value="Invalid - Switched off">Invalid - Switched off</option>
+                <option value="Invalid - Wrong number">Invalid - Wrong number</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Location / City</label>
+            <input type="text" id="inputCity" value="Hassan" placeholder="e.g. Hassan, Mysore" />
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="inputPriority">
+              <option value="High" selected>High Priority</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Department / Medical Interest</label>
-          <select id="inputDepartment">
-            <option value="Fertility & IVF" selected>Fertility & IVF</option>
-            <option value="Gynecology & Obstetrics">Gynecology & Obstetrics</option>
-            <option value="IUI Treatment">IUI Treatment</option>
-            <option value="Laparoscopy">Laparoscopy</option>
-          </select>
+
+        <!-- Section: Clinical Dates & Surgery Details -->
+        <div class="form-section-header">Consultation & Surgery Planning</div>
+        <div class="form-row-grid">
+          <div class="form-group">
+            <label>Consultation Date</label>
+            <input type="date" id="inputConsultationDate" />
+          </div>
+          <div class="form-group">
+            <label>Surgery / Procedure Date</label>
+            <input type="date" id="inputSurgeryDate" />
+          </div>
+          <div class="form-group">
+            <label>Surgery Requirement</label>
+            <input type="text" id="inputSurgeryRequirement" placeholder="e.g. Laparoscopic Ovarian Drilling, ICSI" />
+          </div>
+          <div class="form-group">
+            <label>Destination (Hospital SIM) Number</label>
+            <input type="text" id="inputDestNumber" placeholder="e.g. +91 80471 90001" />
+          </div>
         </div>
-        <div class="form-group">
-          <label>Lead Priority</label>
-          <select id="inputPriority">
-            <option value="High" selected>High (Urgent Callback)</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
+
+        <div class="form-group full-width">
+          <label>Surgery / Procedure Details</label>
+          <textarea id="inputSurgeryDetails" rows="2" placeholder="Clinical notes on surgical procedure, anesthesia, or package requirements..."></textarea>
         </div>
-        <div class="form-group">
-          <label>Initial Clinical Notes</label>
-          <textarea id="inputNotes" rows="3" placeholder="Symptoms, caller background, medical history..."></textarea>
+
+        <div class="form-group full-width">
+          <label>Executive Clinical Remarks</label>
+          <textarea id="inputNotes" rows="2" placeholder="Executive notes, patient history, caller background..."></textarea>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close="newLeadModal">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Patient Lead</button>
