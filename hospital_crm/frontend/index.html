@@ -171,6 +171,7 @@
             <button class="filter-chip" data-filter="new" id="filterNew">New</button>
             <button class="filter-chip" data-filter="followup" id="filterFollowup">Follow-up</button>
             <button class="filter-chip" data-filter="appointment" id="filterAppt">Appt</button>
+            <button class="filter-chip" data-filter="converted" id="filterConverted">IVF Active</button>
           </div>
         </div>
 
@@ -195,7 +196,16 @@
           <div class="patient-identity">
             <div class="patient-name-row">
               <h1 id="detailPatientName" class="patient-name">Select a Patient</h1>
-              <span id="detailLeadStatus" class="status-pill status-followup">--</span>
+              <div class="stage-select-wrapper">
+                <span class="stage-label">Stage:</span>
+                <select id="detailStageSelect" class="stage-dropdown-select" title="Change Patient Lead Stage">
+                  <option value="New">🟢 New Inbound</option>
+                  <option value="Follow-up">🟡 Follow-up Needed</option>
+                  <option value="Appointment Booked">📅 Consultation Booked</option>
+                  <option value="Converted (Under Treatment)">💖 IVF Under Treatment</option>
+                  <option value="Not Interested / Lost">⚪ Dropped / Lost</option>
+                </select>
+              </div>
               <span id="detailPriority" class="priority-pill priority-high">--</span>
             </div>
             <div class="patient-contact-row">
@@ -294,6 +304,15 @@
                 Activity Timeline & Call Recordings
               </h3>
               <span class="timeline-sub-tag">Live Chronological Audit Feed</span>
+            </div>
+
+            <!-- Quick Clinical Note Composer Bar -->
+            <div class="quick-note-composer-bar">
+              <input type="text" id="quickTimelineNoteInput" class="quick-note-input" placeholder="Type quick clinical note (e.g. 'Patient scheduled for semen analysis test') and press Enter..." />
+              <button class="btn btn-sm btn-primary" id="quickTimelineNoteBtn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                <span>Add Note</span>
+              </button>
             </div>
             
             <div class="timeline-feed" id="timelineFeed">

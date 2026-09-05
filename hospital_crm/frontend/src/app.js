@@ -404,6 +404,8 @@ function renderLeadsList(leads) {
     filtered = leads.filter(l => l.lead_status === "Follow-up" || l.lead_status === "Follow-up Needed");
   } else if (currentFilter === "appointment" || currentFilter === "appointments") {
     filtered = leads.filter(l => l.lead_status === "Appointment Booked" || l.lead_status === "Appointment Scheduled");
+  } else if (currentFilter === "converted") {
+    filtered = leads.filter(l => (l.lead_status || '').toLowerCase().includes("convert") || (l.lead_status || '').toLowerCase().includes("treatment"));
   } else if (currentFilter === "reminders") {
     filtered = leads.filter(l => {
       if (!l.next_followup_at) return false;
@@ -425,19 +427,23 @@ function renderLeadsList(leads) {
     const isCallbackDue = lead.next_followup_at && new Date(lead.next_followup_at) <= new Date(now.getTime() + 15 * 60 * 1000);
     const callbackDueHtml = isCallbackDue ? `<span class="reminder-due-tag">⏰ Callback Due</span>` : "";
     const cardClass = isCallbackDue ? "callback-due-card" : "";
+    const initials = (lead.patient_name || 'PT').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'PT';
 
     return `
       <div class="lead-card ${isSelected} ${cardClass}" data-lead-id="${lead.id}">
-        <div class="card-top-row">
-          <span class="card-patient-name">${escapeHtml(lead.patient_name)}</span>
-          <span class="status-pill ${statusClass}">${escapeHtml(lead.lead_status || 'New')}</span>
-        </div>
-        <div class="card-meta-row">
-          <span class="card-phone">${escapeHtml(lead.primary_phone || lead.normalized_phone || '')}</span>
-          <span class="card-source-dot">•</span>
-          <span>${escapeHtml(lead.lead_source || 'Enquiry')}</span>
-          <span class="card-source-dot">•</span>
-          <span>${escapeHtml(lead.city || 'Hassan')}</span>
+        <div class="card-avatar-row">
+          <div class="card-avatar">${initials}</div>
+          <div class="card-info-col">
+            <div class="card-top-row">
+              <span class="card-patient-name">${escapeHtml(lead.patient_name)}</span>
+              <span class="status-pill ${statusClass}">${escapeHtml(lead.lead_status || 'New')}</span>
+            </div>
+            <div class="card-meta-row">
+              <span class="card-phone">${escapeHtml(lead.primary_phone || lead.normalized_phone || '')}</span>
+              <span class="card-source-dot">•</span>
+              <span>${escapeHtml(lead.city || 'Hassan')}</span>
+            </div>
+          </div>
         </div>
         <div class="card-badges-row">
           <span class="priority-pill ${priorityClass}">${escapeHtml(lead.priority || 'High')}</span>
@@ -493,18 +499,14 @@ function renderActiveLead(lead) {
 
   const nameEl = document.getElementById("detailPatientName");
   const phoneEl = document.getElementById("detailPhone");
-  const statusEl = document.getElementById("detailLeadStatus");
   const priorityEl = document.getElementById("detailPriority");
   const locationEl = document.getElementById("detailLocation");
   const sourceEl = document.getElementById("detailSource");
   const deptEl = document.getElementById("detailDept");
+  const stageSelect = document.getElementById("detailStageSelect");
 
   if (nameEl) nameEl.textContent = lead.patient_name || "Unknown Patient";
   if (phoneEl) phoneEl.textContent = lead.primary_phone || lead.normalized_phone || "--";
-  if (statusEl) {
-    statusEl.textContent = lead.lead_status || "New";
-    statusEl.className = `status-pill ${getStatusClass(lead.lead_status)}`;
-  }
   if (priorityEl) {
     priorityEl.textContent = `${lead.priority || 'High'} Priority`;
     priorityEl.className = `priority-pill ${getPriorityClass(lead.priority)}`;
@@ -512,6 +514,16 @@ function renderActiveLead(lead) {
   if (locationEl) locationEl.textContent = `${lead.city || 'Hassan'}, Karnataka`;
   if (sourceEl) sourceEl.textContent = lead.lead_source || "Mobile Sync";
   if (deptEl) deptEl.textContent = lead.department || "Fertility & IVF";
+
+  if (stageSelect) {
+    const st = lead.lead_status || "New";
+    if (st.includes("New")) stageSelect.value = "New";
+    else if (st.includes("Follow")) stageSelect.value = "Follow-up";
+    else if (st.includes("App")) stageSelect.value = "Appointment Booked";
+    else if (st.includes("Convert") || st.includes("Treatment")) stageSelect.value = "Converted (Under Treatment)";
+    else if (st.includes("Lost") || st.includes("Not")) stageSelect.value = "Not Interested / Lost";
+    else stageSelect.value = "New";
+  }
 
   // Detailed profile tab
   const pName = document.getElementById("profileName");
@@ -545,7 +557,7 @@ function renderEmptyWorkspace() {
 }
 
 // -------------------------------------------------------------
-// Timeline & Activity Feed Loading with In-Browser Audio Player
+// Timeline & Activity Feed Loading with Direct Audio Streaming
 // -------------------------------------------------------------
 async function loadTimeline(leadId) {
   const feed = document.getElementById("timelineFeed");
@@ -556,7 +568,7 @@ async function loadTimeline(leadId) {
   try {
     const activities = await apiRequest(`/leads/${leadId}/timeline?limit=50`);
     if (!activities || activities.length === 0) {
-      feed.innerHTML = `<div class="empty-state">No activities recorded yet for this patient. Click an action button above to log a call, note, or follow-up.</div>`;
+      feed.innerHTML = `<div class="empty-state">No activities recorded yet for this patient. Click an action button above or add a note.</div>`;
       return;
     }
 
@@ -574,12 +586,19 @@ async function loadTimeline(leadId) {
           streamUrl = `${baseHost}${streamUrl}`;
         }
         audioPlayerHtml = `
-          <div class="recording-player-box">
-            <audio controls style="width: 100%; height: 32px;" preload="none">
-              <source src="${streamUrl}" type="audio/mpeg">
-              Audio playback not supported.
-            </audio>
-            <span class="duration-text">${meta.duration || 0}s</span>
+          <div class="audio-player-container">
+            <div class="audio-controls-row">
+              <audio controls src="${streamUrl}" preload="metadata" class="native-audio-element">
+                Audio playback not supported.
+              </audio>
+              <a href="${streamUrl}" target="_blank" download class="btn-download-audio" title="Download Audio File">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </a>
+            </div>
+            <div class="audio-meta-row">
+              <span class="audio-badge">Recorded Call (${meta.duration || 0}s)</span>
+              <span class="audio-hint">Click ▶️ Play to listen</span>
+            </div>
           </div>
         `;
       }
@@ -616,6 +635,62 @@ async function loadTimeline(leadId) {
 // Interactive Action Handlers & Event Setup
 // -------------------------------------------------------------
 function setupEventHandlers() {
+  // Direct Patient Stage Selector
+  const stageSelect = document.getElementById("detailStageSelect");
+  if (stageSelect) {
+    stageSelect.addEventListener("change", async (e) => {
+      if (!activeLead) return;
+      const newStage = e.target.value;
+      showToast(`Updating stage to: ${newStage}...`, "info");
+      try {
+        await apiRequest(`/leads/${activeLead.id}`, {
+          method: "PATCH",
+          body: { lead_status: newStage }
+        });
+        activeLead.lead_status = newStage;
+        const inList = liveLeads.find(l => l.id === activeLead.id);
+        if (inList) inList.lead_status = newStage;
+        renderLeadsList(liveLeads);
+        updateBadges(liveLeads);
+        showToast(`Lead stage updated to: ${newStage}`, "success");
+        await loadTimeline(activeLead.id);
+      } catch (err) {
+        showToast(`Failed to update stage: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Quick Clinical Note Composer
+  const quickNoteInput = document.getElementById("quickTimelineNoteInput");
+  const quickNoteBtn = document.getElementById("quickTimelineNoteBtn");
+  const handlePostQuickNote = async () => {
+    if (!activeLead || !quickNoteInput) return;
+    const noteText = quickNoteInput.value.trim();
+    if (!noteText) {
+      showToast("Please enter a clinical note first.", "error");
+      return;
+    }
+    showToast("Saving clinical note...", "info");
+    try {
+      await apiRequest(`/leads/${activeLead.id}/notes`, {
+        method: "POST",
+        body: { notes: noteText }
+      });
+      quickNoteInput.value = "";
+      showToast("Clinical note recorded!", "success");
+      await loadTimeline(activeLead.id);
+    } catch (err) {
+      showToast(`Failed to save note: ${err.message}`, "error");
+    }
+  };
+
+  if (quickNoteBtn) quickNoteBtn.addEventListener("click", handlePostQuickNote);
+  if (quickNoteInput) {
+    quickNoteInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handlePostQuickNote();
+    });
+  }
+
   // Mobile Hamburger Toggle
   const mobileToggle = document.getElementById("mobileMenuToggle");
   const sidebar = document.getElementById("mainSidebar");

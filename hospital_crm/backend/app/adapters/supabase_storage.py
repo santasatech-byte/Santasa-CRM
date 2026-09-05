@@ -33,7 +33,7 @@ class SupabaseStorageAdapter:
         bucket_name: Optional[str] = None
     ):
         self.supabase_url = (supabase_url or settings.SUPABASE_URL or "").rstrip("/")
-        self.supabase_key = supabase_key or settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY
+        self.supabase_key = supabase_key or settings.SUPABASE_KEY or settings.SUPABASE_SERVICE_ROLE_KEY
         self.bucket_name = bucket_name or settings.SUPABASE_STORAGE_BUCKET or "call-recordings"
         self.is_configured = bool(self.supabase_url and self.supabase_key)
 

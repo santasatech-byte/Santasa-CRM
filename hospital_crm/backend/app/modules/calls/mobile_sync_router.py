@@ -8,7 +8,7 @@ import shutil
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Request, status, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.core.database import get_db
@@ -224,18 +224,15 @@ async def sync_mobile_call_log(
     }
 
 
-@router.get("/recordings/{filename}", status_code=status.HTTP_200_OK)
+@router.get("/recordings/{filename}")
 async def stream_call_recording(filename: str):
-    """Streams the local call recording audio file (.mp3/.m4a/.wav) for playback in CRM."""
+    """Streams the call recording audio file (.mp3/.m4a/.wav) for playback in CRM."""
     clean_filename = os.path.basename(filename)
     filepath = os.path.join(MEDIA_DIR, clean_filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Recording audio file not found.")
+    if os.path.exists(filepath):
+        media_type = "audio/mp4" if filename.endswith(".m4a") else "audio/mpeg"
+        return FileResponse(filepath, media_type=media_type)
 
-    media_type = "audio/mpeg"
-    if filename.endswith(".m4a"):
-        media_type = "audio/mp4"
-    elif filename.endswith(".wav"):
-        media_type = "audio/wav"
-
-    return FileResponse(filepath, media_type=media_type)
+    # Redirect to Supabase Public Storage CDN
+    supabase_public_url = f"{storage_adapter.supabase_url}/storage/v1/object/public/{storage_adapter.bucket_name}/{clean_filename}"
+    return RedirectResponse(url=supabase_public_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
