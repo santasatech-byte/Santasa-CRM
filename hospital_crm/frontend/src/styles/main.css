@@ -1586,4 +1586,146 @@ body.app-body {
   }
 }
 
+/* ==========================================================================
+   Live Active Call Telephony Banner & Patient Edit Styles
+   ========================================================================== */
+.live-active-call-banner {
+  background: linear-gradient(135deg, #1e0e27 0%, #3e1650 45%, #683381 100%);
+  color: #ffffff;
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--brand-pink);
+  box-shadow: 0 4px 16px rgba(104, 51, 129, 0.4);
+  animation: slideDownBanner 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  z-index: 40;
+}
+
+@keyframes slideDownBanner {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.active-call-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.active-call-pulse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(236, 90, 141, 0.22);
+  border: 1px solid var(--brand-pink);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #ffc4d8;
+}
+
+.pulse-animation-circle {
+  width: 9px;
+  height: 9px;
+  background-color: var(--brand-pink);
+  border-radius: 50%;
+  animation: liveCallPulse 1.4s infinite;
+}
+
+@keyframes liveCallPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(236, 90, 141, 0.8); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(236, 90, 141, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(236, 90, 141, 0); }
+}
+
+.active-call-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.active-call-phone {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+.active-call-patient {
+  color: #f1e4f9;
+  font-weight: 600;
+}
+
+.active-call-timer {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.16);
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+  font-weight: 700;
+  color: #40bdb3;
+}
+
+.active-call-sep {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.active-call-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.active-call-action-btn {
+  background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-dark)) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  box-shadow: 0 3px 10px rgba(236, 90, 141, 0.45);
+  padding: 0.4rem 0.95rem !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.active-call-action-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.active-call-dismiss-btn {
+  color: #e4d7ee !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: transparent !important;
+  padding: 0.35rem 0.45rem !important;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.active-call-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.card-header-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.card-header-with-action h3 {
+  margin-bottom: 0 !important;
+}
+
+
 

@@ -4,7 +4,25 @@
  * Brand Theme: Royal Purple (#683381), Rose Pink (#EC5A8D), Turquoise (#40BDB3)
  */
 
-let API_BASE = localStorage.getItem("crm_api_url") || "https://santasa-crm.onrender.com/api/v1";
+function getInitialApiBase() {
+  const saved = localStorage.getItem("crm_api_url");
+  if (saved) return saved;
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+     window.location.hostname === "127.0.0.1" ||
+     window.location.hostname.startsWith("192.168.") ||
+     window.location.hostname.startsWith("10.") ||
+     window.location.port === "8000" ||
+     window.location.port === "3000" ||
+     !window.location.hostname.includes("vercel.app"))
+  ) {
+    return `${window.location.origin}/api/v1`;
+  }
+  return "https://santasa-crm.onrender.com/api/v1";
+}
+
+let API_BASE = getInitialApiBase();
 
 let authToken = localStorage.getItem("supabase_access_token") || localStorage.getItem("crm_auth_token") || null;
 let refreshToken = localStorage.getItem("supabase_refresh_token") || null;
@@ -154,10 +172,97 @@ async function authenticateDefaultExecutive(customEmail = null, customPassword =
 }
 
 // -------------------------------------------------------------
-// Core Initialization & Lifecycle
+// Core Initialization & Telephony Lifecycle
 // -------------------------------------------------------------
+let activeCallTimerInterval = null;
+let currentActiveCall = null;
+
+function formatDurationSeconds(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+async function checkActiveCall() {
+  if (!authToken) return;
+  try {
+    const res = await apiRequest("/telephony/mobile-sync/active-call");
+    const banner = document.getElementById("liveActiveCallBanner");
+    if (!banner) return;
+
+    if (res && res.active && res.call) {
+      currentActiveCall = res.call;
+      banner.classList.remove("hidden");
+
+      const typeLabel = document.getElementById("activeCallTypeLabel");
+      const phoneEl = document.getElementById("activeCallPhone");
+      const patientEl = document.getElementById("activeCallPatient");
+      const timerEl = document.getElementById("activeCallTimer");
+
+      if (typeLabel) typeLabel.textContent = `LIVE ${res.call.direction ? res.call.direction.toUpperCase() : 'CALL'}`;
+      if (phoneEl) phoneEl.textContent = res.call.phone_number || "--";
+      if (patientEl) patientEl.textContent = res.call.patient_name || "In-Call Lead";
+
+      if (timerEl && !activeCallTimerInterval) {
+        let elapsed = res.call.duration_elapsed || 0;
+        timerEl.textContent = formatDurationSeconds(elapsed);
+        activeCallTimerInterval = setInterval(() => {
+          elapsed++;
+          if (timerEl) timerEl.textContent = formatDurationSeconds(elapsed);
+        }, 1000);
+      }
+    } else {
+      if (currentActiveCall) {
+        if (activeCallTimerInterval) {
+          clearInterval(activeCallTimerInterval);
+          activeCallTimerInterval = null;
+        }
+        currentActiveCall = null;
+        banner.classList.add("hidden");
+        showToast("Call ended: recording & duration mapped to lead!", "info");
+        await refreshLeadsQueue();
+        if (activeLead) await loadTimeline(activeLead.id);
+      }
+    }
+  } catch (e) {
+    // Polling silent catch
+  }
+}
+
+let pollersStarted = false;
+function startLivePollers() {
+  if (pollersStarted) return;
+  pollersStarted = true;
+
+  // Telephony Live Call Poller (every 2.5 seconds)
+  setInterval(checkActiveCall, 2500);
+  checkActiveCall();
+
+  // Real-Time 5-second Live Leads Queue & Auto-Reminder Checker
+  setInterval(async () => {
+    if (authToken && !document.hidden) {
+      try {
+        const leads = await apiRequest("/leads?limit=100");
+        if (leads && Array.isArray(leads)) {
+          const countChanged = leads.length !== liveLeads.length;
+          liveLeads = leads;
+          updateBadges(liveLeads);
+          if (countChanged) {
+            renderLeadsList(liveLeads);
+            showToast("New patient call synced live!", "info");
+          }
+          checkExecutiveDueReminders(liveLeads);
+        }
+      } catch (e) {
+        // Silent sync catch
+      }
+    }
+  }, 5000);
+}
+
 async function initApp() {
   setupEventHandlers();
+  startLivePollers();
 
   // If token is already present, verify current user
   if (authToken) {
@@ -195,27 +300,6 @@ async function initApp() {
 
   const loginModal = document.getElementById("loginModal");
   if (loginModal) loginModal.classList.remove("hidden");
-
-  // Real-Time 5-second Live Sync & Auto-Reminder Checker
-  setInterval(async () => {
-    if (authToken && !document.hidden) {
-      try {
-        const leads = await apiRequest("/leads?limit=100");
-        if (leads && Array.isArray(leads)) {
-          const countChanged = leads.length !== liveLeads.length;
-          liveLeads = leads;
-          updateBadges(liveLeads);
-          if (countChanged) {
-            renderLeadsList(liveLeads);
-            showToast("New patient call synced live!", "info");
-          }
-          checkExecutiveDueReminders(liveLeads);
-        }
-      } catch (e) {
-        // Silent sync catch
-      }
-    }
-  }, 5000);
 }
 
 if (document.readyState === "loading") {
@@ -611,7 +695,7 @@ async function loadTimeline(leadId) {
       if (meta.recording_url) {
         let streamUrl = meta.recording_url;
         if (!streamUrl.startsWith("http")) {
-          const baseHost = API_BASE.includes("http") ? new URL(API_BASE).origin : "https://santasa-crm.onrender.com";
+          const baseHost = API_BASE.startsWith("http") ? new URL(API_BASE).origin : window.location.origin;
           streamUrl = `${baseHost}${streamUrl}`;
         }
         audioPlayerHtml = `
@@ -767,21 +851,130 @@ function setupEventHandlers() {
     });
   });
 
-  // New Lead Modal Open
-  const newLeadBtn = document.getElementById("newLeadBtn");
-  if (newLeadBtn) {
-    newLeadBtn.addEventListener("click", () => {
+  let editingLeadId = null;
+
+  window.openLeadModal = function(leadToEdit = null) {
+    const modal = document.getElementById("newLeadModal");
+    if (!modal) return;
+    const modalTitle = modal.querySelector(".modal-header h3");
+    const modalSub = modal.querySelector(".modal-subtitle");
+    const submitBtn = modal.querySelector(".modal-footer button[type='submit']");
+
+    if (leadToEdit) {
+      editingLeadId = leadToEdit.id;
+      if (modalTitle) modalTitle.textContent = "Edit Patient Lead Details";
+      if (modalSub) modalSub.textContent = "Fill or update patient details during call. * are mandatory.";
+      if (submitBtn) submitBtn.textContent = "Save Changes";
+
+      const inqDateInput = document.getElementById("inputInquiryDate");
+      if (inqDateInput) {
+        const d = leadToEdit.created_at ? new Date(leadToEdit.created_at) : new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        inqDateInput.value = d.toISOString().slice(0, 16);
+      }
+
+      if (document.getElementById("inputPatientName")) document.getElementById("inputPatientName").value = leadToEdit.patient_name || "";
+      if (document.getElementById("inputPrimaryPhone")) document.getElementById("inputPrimaryPhone").value = leadToEdit.primary_phone || leadToEdit.normalized_phone || "";
+      if (document.getElementById("inputRegisteredPhone")) document.getElementById("inputRegisteredPhone").value = leadToEdit.registered_number || "";
+      if (document.getElementById("inputEmail")) document.getElementById("inputEmail").value = leadToEdit.email || "";
+      if (document.getElementById("inputPatientType")) document.getElementById("inputPatientType").value = leadToEdit.patient_type || "Enquiry";
+      if (document.getElementById("inputPatientId")) document.getElementById("inputPatientId").value = leadToEdit.patient_id_mrn || "";
+      if (document.getElementById("inputTreatment")) document.getElementById("inputTreatment").value = leadToEdit.treatment || "";
+      if (document.getElementById("inputMessage")) document.getElementById("inputMessage").value = leadToEdit.message || "";
+      if (document.getElementById("inputLeadSource")) document.getElementById("inputLeadSource").value = leadToEdit.lead_source || "Mobile Call Direct";
+      if (document.getElementById("inputLeadStatus")) document.getElementById("inputLeadStatus").value = leadToEdit.lead_status || "Valid - Need Appointment";
+      if (document.getElementById("inputCity")) document.getElementById("inputCity").value = leadToEdit.city || "Hassan";
+      if (document.getElementById("inputPriority")) document.getElementById("inputPriority").value = leadToEdit.priority || "High";
+      if (document.getElementById("inputSurgeryRequirement")) document.getElementById("inputSurgeryRequirement").value = leadToEdit.surgery_requirement || "";
+      if (document.getElementById("inputSurgeryDetails")) document.getElementById("inputSurgeryDetails").value = leadToEdit.surgery_details || "";
+      if (document.getElementById("inputDestNumber")) document.getElementById("inputDestNumber").value = leadToEdit.destination_number || "";
+      if (document.getElementById("inputNotes")) document.getElementById("inputNotes").value = leadToEdit.notes || "";
+
+      if (leadToEdit.consultation_date && document.getElementById("inputConsultationDate")) {
+        const cDate = new Date(leadToEdit.consultation_date);
+        cDate.setMinutes(cDate.getMinutes() - cDate.getTimezoneOffset());
+        document.getElementById("inputConsultationDate").value = cDate.toISOString().slice(0, 16);
+      }
+      if (leadToEdit.surgery_date && document.getElementById("inputSurgeryDate")) {
+        const sDate = new Date(leadToEdit.surgery_date);
+        sDate.setMinutes(sDate.getMinutes() - sDate.getTimezoneOffset());
+        document.getElementById("inputSurgeryDate").value = sDate.toISOString().slice(0, 16);
+      }
+    } else {
+      editingLeadId = null;
+      if (modalTitle) modalTitle.textContent = "Create New Patient Lead";
+      if (modalSub) modalSub.textContent = "Fill up the below fields to create a new lead. * are mandatory fields.";
+      if (submitBtn) submitBtn.textContent = "Save Patient Lead";
+
+      const newLeadForm = document.getElementById("newLeadForm");
+      if (newLeadForm) newLeadForm.reset();
+
       const inqDateInput = document.getElementById("inputInquiryDate");
       if (inqDateInput) {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         inqDateInput.value = now.toISOString().slice(0, 16);
       }
-      document.getElementById("newLeadModal").classList.remove("hidden");
+    }
+    modal.classList.remove("hidden");
+  };
+
+  // New Lead Modal Open Button
+  const newLeadBtn = document.getElementById("newLeadBtn");
+  if (newLeadBtn) {
+    newLeadBtn.addEventListener("click", () => {
+      openLeadModal(null);
     });
   }
 
-  // New Lead Form Submit (Comprehensive Hospital Fields)
+  // Edit Patient Profile Button in detail card
+  const editProfileBtn = document.getElementById("editPatientProfileBtn");
+  if (editProfileBtn) {
+    editProfileBtn.addEventListener("click", () => {
+      if (!activeLead) {
+        showToast("Please select a patient lead from the queue first.", "warning");
+        return;
+      }
+      openLeadModal(activeLead);
+    });
+  }
+
+  // Active Call Banner - Edit Lead Live Button
+  const activeCallEditBtn = document.getElementById("activeCallEditLeadBtn");
+  if (activeCallEditBtn) {
+    activeCallEditBtn.addEventListener("click", async () => {
+      if (!currentActiveCall) return;
+      try {
+        let targetLead = liveLeads.find(l => l.id === currentActiveCall.lead_id);
+        if (!targetLead) {
+          targetLead = await apiRequest(`/leads/${currentActiveCall.lead_id}`);
+        }
+        if (targetLead) {
+          await selectLead(targetLead.id);
+          openLeadModal(targetLead);
+        }
+      } catch (err) {
+        showToast(`Could not open active call lead: ${err.message}`, "error");
+      }
+    });
+  }
+
+  // Active Call Banner - Dismiss Button
+  const activeCallDismissBtn = document.getElementById("activeCallDismissBtn");
+  if (activeCallDismissBtn) {
+    activeCallDismissBtn.addEventListener("click", async () => {
+      document.getElementById("liveActiveCallBanner")?.classList.add("hidden");
+      if (activeCallTimerInterval) {
+        clearInterval(activeCallTimerInterval);
+        activeCallTimerInterval = null;
+      }
+      try {
+        await apiRequest("/telephony/mobile-sync/active-call/dismiss", { method: "POST" });
+      } catch (e) {}
+    });
+  }
+
+  // New Lead / Edit Lead Form Submit
   const newLeadForm = document.getElementById("newLeadForm");
   if (newLeadForm) {
     newLeadForm.addEventListener("submit", async (e) => {
@@ -807,38 +1000,52 @@ function setupEventHandlers() {
       const destNumber = document.getElementById("inputDestNumber")?.value.trim() || null;
       const notes = document.getElementById("inputNotes")?.value.trim() || null;
 
+      const payload = {
+        patient_name: name,
+        primary_phone: phone,
+        registered_number: regPhone,
+        email: email,
+        patient_type: patientType,
+        patient_id_mrn: patientId,
+        treatment: treatment,
+        message: message,
+        lead_source: source,
+        lead_status: leadStatus,
+        city: city,
+        department: "Fertility & IVF",
+        priority: prio,
+        consultation_date: consultDateVal ? new Date(consultDateVal).toISOString() : null,
+        surgery_date: surgeryDateVal ? new Date(surgeryDateVal).toISOString() : null,
+        surgery_requirement: surgeryReq,
+        surgery_details: surgeryDetails,
+        destination_number: destNumber,
+        notes: notes || "Direct SSM / Hospital Reference Entry"
+      };
+
       try {
-        const lead = await apiRequest("/leads", {
-          method: "POST",
-          body: {
-            patient_name: name,
-            primary_phone: phone,
-            registered_number: regPhone,
-            email: email,
-            patient_type: patientType,
-            patient_id_mrn: patientId,
-            treatment: treatment,
-            message: message,
-            lead_source: source,
-            lead_status: leadStatus,
-            city: city,
-            department: "Fertility & IVF",
-            priority: prio,
-            consultation_date: consultDateVal ? new Date(consultDateVal).toISOString() : null,
-            surgery_date: surgeryDateVal ? new Date(surgeryDateVal).toISOString() : null,
-            surgery_requirement: surgeryReq,
-            surgery_details: surgeryDetails,
-            destination_number: destNumber,
-            notes: notes || "Direct SSM / Hospital Reference Entry"
-          }
-        });
-        showToast("Patient lead created successfully!", "success");
+        let resultLead;
+        if (editingLeadId) {
+          resultLead = await apiRequest(`/leads/${editingLeadId}`, {
+            method: "PATCH",
+            body: payload
+          });
+          showToast("Patient lead details saved successfully!", "success");
+        } else {
+          resultLead = await apiRequest("/leads", {
+            method: "POST",
+            body: payload
+          });
+          showToast("Patient lead created successfully!", "success");
+        }
+
         document.getElementById("newLeadModal").classList.add("hidden");
+        const currentSavedId = editingLeadId || (resultLead ? resultLead.id : null);
+        editingLeadId = null;
         newLeadForm.reset();
         await refreshLeadsQueue();
-        if (lead && lead.id) selectLead(lead.id);
+        if (currentSavedId) selectLead(currentSavedId);
       } catch (err) {
-        showToast(`Failed to create lead: ${err.message}`, "error");
+        showToast(`Failed to save lead: ${err.message}`, "error");
       }
     });
   }
