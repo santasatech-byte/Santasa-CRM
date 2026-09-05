@@ -564,7 +564,7 @@ async function loadTimeline(leadId) {
       const type = (act.activity_type || "note").toLowerCase();
       const iconSvg = getActivityIconSvg(type);
       const timeFormatted = act.created_at ? new Date(act.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : "";
-      const meta = act.metadata || {};
+      const meta = act.activity_metadata || act.metadata || {};
 
       let audioPlayerHtml = "";
       if (meta.recording_url) {
