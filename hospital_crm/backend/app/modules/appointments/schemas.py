@@ -25,12 +25,16 @@ class AppointmentSummary(BaseModel):
 
 class BookAppointmentRequest(BaseModel):
     lead_id: str
-    appointment_at: datetime
+    appointment_at: Optional[datetime] = None
+    appointment_date: Optional[datetime] = None
     service_type: str = "Initial Consultation"
     department: str = "Fertility & IVF"
     doctor_id: Optional[str] = None
     branch_id: Optional[str] = None
     notes: Optional[str] = None
+
+    def get_appointment_time(self) -> datetime:
+        return self.appointment_at or self.appointment_date or datetime.now()
 
 
 class UpdateAppointmentStatusRequest(BaseModel):

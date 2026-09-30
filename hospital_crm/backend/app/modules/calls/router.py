@@ -7,7 +7,7 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.core.permissions import require_permission, Permissions, check_resource_access
@@ -149,8 +149,17 @@ async def list_calls(
     """Lists call history with role-based scoping."""
     stmt = select(Call)
 
+    # Hospital isolation
+    if current_user.hospital_id and current_user.role != UserRole.SUPER_ADMIN.value:
+        stmt = stmt.where(Call.hospital_id == current_user.hospital_id)
+
     if current_user.role == UserRole.CRM_EXECUTIVE.value:
-        stmt = stmt.where(Call.executive_id == current_user.id)
+        stmt = stmt.where(
+            or_(
+                Call.executive_id == current_user.id,
+                Call.executive_id.is_(None)
+            )
+        )
     elif current_user.role == UserRole.CRM_MANAGER.value and current_user.branch_id:
         stmt = stmt.where(Call.branch_id == current_user.branch_id)
 

@@ -30,6 +30,7 @@ from app.core.dependencies import get_current_user, get_current_active_user, get
 from app.core.permissions import require_roles
 from app.core.logging import logger
 from app.modules.administration.models import User, UserRole
+from app.modules.administration.hospital_models import Hospital
 from app.modules.administration.schemas import (
     LoginRequest,
     TokenResponse,
@@ -46,6 +47,24 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+
+
+def populate_user_summary(user: User, db: Session) -> UserSummary:
+    summary = UserSummary.model_validate(user)
+    if user.hospital_id:
+        hosp = db.get(Hospital, user.hospital_id)
+        if hosp:
+            summary.hospital_id = hosp.id
+            summary.hospital_name = hosp.name
+            summary.hospital_code = hosp.code
+    if not summary.hospital_name:
+        if "ssm" in user.email.lower():
+            summary.hospital_name = "SSM Hospital"
+            summary.hospital_code = "SSM"
+        else:
+            summary.hospital_name = "Santasa IVF & Hospital"
+            summary.hospital_code = "SHH"
+    return summary
 
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
@@ -108,7 +127,7 @@ async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
                     token_type="bearer",
                     refresh_token=refresh_token,
                     expires_in=expires_in,
-                    user=UserSummary.model_validate(user)
+                    user=populate_user_summary(user, db)
                 )
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
@@ -146,6 +165,7 @@ async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         "sub": user.id,
         "email": user.email,
         "role": user.role,
+        "hospital_id": user.hospital_id,
         "branch_id": user.branch_id
     }
     access_token = create_access_token(data=token_data)
@@ -153,7 +173,7 @@ async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        user=UserSummary.model_validate(user)
+        user=populate_user_summary(user, db)
     )
 
 
@@ -206,12 +226,13 @@ async def logout(
 
 @router.get("/me", response_model=UserSummary, status_code=status.HTTP_200_OK)
 async def get_current_user_profile(
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
 ):
     """
     Returns the authenticated user profile and permissions.
     """
-    return UserSummary.model_validate(current_user)
+    return populate_user_summary(current_user, db)
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)

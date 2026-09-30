@@ -43,6 +43,7 @@ class Call(BaseModel):
     
     direction: Mapped[str] = mapped_column(String(20), default=CallDirectionEnum.INCOMING.value, index=True, nullable=False)
     executive_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    hospital_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True)
     branch_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
     
     started_at: Mapped[datetime] = mapped_column(

@@ -48,7 +48,7 @@ async def book_appointment(
     appointment = AppointmentService.book_appointment(
         db=db,
         lead=lead,
-        appointment_at=request.appointment_at,
+        appointment_at=request.get_appointment_time(),
         service_type=request.service_type,
         department=request.department,
         doctor_id=request.doctor_id,

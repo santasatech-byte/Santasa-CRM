@@ -19,6 +19,9 @@ class UserSummary(BaseModel):
     full_name: str
     phone: Optional[str] = None
     role: str
+    hospital_id: Optional[str] = None
+    hospital_name: Optional[str] = None
+    hospital_code: Optional[str] = None
     branch_id: Optional[str] = None
     is_active: bool
 

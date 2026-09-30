@@ -42,23 +42,24 @@ class LeadStatusService:
                 raise ValidationError("Competitor name and reason are required when marking lead as 'Lost to Competition'.")
 
         # 3. Rule: Not Interested / Wrong Number / Insurance Enquiry requires reason
+        new_status_val = new_status.value if hasattr(new_status, "value") else str(new_status)
         if new_status in [
             LeadStatusEnum.NOT_INTERESTED,
             LeadStatusEnum.WRONG_NUMBER,
             LeadStatusEnum.CLOSED
-        ]:
+        ] or new_status_val in ["not_interested", "wrong_number", "closed"]:
             if not reason:
-                raise ValidationError(f"A reason is required when closing lead as '{new_status.value}'.")
+                raise ValidationError(f"A reason is required when closing lead as '{new_status_val}'.")
 
         # Apply status change
-        lead.lead_status = new_status.value
+        lead.lead_status = new_status_val
         lead.updated_by = changed_by_user_id
 
         # Record History
         history = LeadStatusHistory(
             lead_id=lead.id,
             old_status=old_status,
-            new_status=new_status.value,
+            new_status=new_status_val,
             changed_by=changed_by_user_id,
             changed_at=datetime.now(timezone.utc),
             reason=reason,
@@ -69,7 +70,7 @@ class LeadStatusService:
         db.refresh(lead)
 
         logger.info(
-            f"Lead {lead.id} status transitioned: '{old_status}' -> '{new_status.value}' "
+            f"Lead {lead.id} status transitioned: '{old_status}' -> '{new_status_val}' "
             f"by user {changed_by_user_id}. Reason: {reason}"
         )
         return lead

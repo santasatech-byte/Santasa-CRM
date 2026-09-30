@@ -32,7 +32,7 @@ class FollowUpService:
             lead_id=lead.id,
             executive_id=executive_id,
             scheduled_at=scheduled_at,
-            type=followup_type.value,
+            type=followup_type.value if hasattr(followup_type, "value") else str(followup_type),
             priority=priority,
             notes=notes,
             status=FollowUpStatusEnum.SCHEDULED.value,

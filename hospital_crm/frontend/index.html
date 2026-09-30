@@ -3,77 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Santasa IVF & Hospital CRM — Lead & Follow-up Workspace</title>
-  <link rel="icon" type="image/png" href="./santasa-logo.png">
+  <title>Hospital CRM — SSM & Santasa Multi-Tenant Portal</title>
+  <link rel="icon" type="image/png" href="./favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./src/styles/main.css?v=3.0.0">
+  <link rel="stylesheet" href="./src/styles/main.css">
+  <script>
+    window.toggleFilterDropdown = function(e) {
+      if (e) {
+        if (typeof e.preventDefault === "function") e.preventDefault();
+        if (typeof e.stopPropagation === "function") e.stopPropagation();
+      }
+      var panel = document.getElementById("filterDropdownPanel");
+      var btn = document.getElementById("btnToggleFilterDropdown");
+      if (!panel) return;
+      var isHidden = panel.classList.toggle("hidden");
+      if (btn) {
+        btn.classList.toggle("active", !isHidden);
+        btn.setAttribute("aria-expanded", String(!isHidden));
+      }
+    };
+  </script>
 </head>
 <body class="app-body">
-  <div id="app" class="crm-container">
-    <!-- Top System Command Header -->
-    <header class="crm-header">
-      <div class="header-left">
-        <!-- Mobile Menu Hamburger -->
-        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Navigation">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
+  <!-- Seamless Initial Session Verification Splash -->
+  <div id="authLoadingSplash" class="auth-splash-screen hidden">
+    <div class="auth-splash-box">
+      <div class="auth-splash-pulse">
+        <img src="/ssm-logo.png" alt="Hospital Logo" class="auth-splash-logo" id="splashLogoImg" />
+      </div>
+      <div class="auth-splash-spinner"></div>
+      <div class="auth-splash-label">Verifying Hospital CRM Session...</div>
+    </div>
+  </div>
 
-        <a href="#today" class="brand-badge" id="brandHomeLink">
-          <img src="./santasa-logo.png" alt="Santasa Logo" class="brand-logo-img" />
-          <div class="brand-text-col">
-            <span class="brand-name">santasa</span>
-            <span class="brand-slogan">Spreading Happiness</span>
+  <div id="app" class="crm-container">
+
+    <!-- Top Navigation Header (100% Matching crm.hummatic.com) -->
+    <header class="hummatic-header">
+      <div class="hummatic-nav-left">
+        <a href="#dashboard" class="hummatic-brand" id="brandHomeLink">
+          <div class="brand-logo-container" id="brandLogoContainer">
+            <!-- Dynamic Hospital Logo (SSM / Santasa) -->
+            <img id="brandLogoImg" src="/ssm-logo.png" alt="Hospital Logo" class="brand-logo-img" />
           </div>
-          <span class="crm-badge">CRM</span>
         </a>
 
-        <div class="branch-selector-wrapper">
-          <svg class="branch-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <select id="branchSelector" class="branch-select">
-            <option value="all">All Hospital Branches</option>
-            <option value="hassan" selected>Hassan Main Hospital</option>
-            <option value="mysore">Mysore Center</option>
-          </select>
-        </div>
+        <!-- Main Navigation Links -->
+        <nav class="hummatic-nav-menu" id="topNavMenu">
+          <a href="#dashboard" class="hummatic-nav-link active" data-tab="dashboard" id="navHome">Home</a>
+          <a href="#leads" class="hummatic-nav-link" data-tab="leads" id="navLeads">Leads</a>
+          <a href="#call-notifications" class="hummatic-nav-link" data-tab="calls" id="navCallNotifications">
+            Call Notifications <span class="nav-badge hidden" id="navCallsBadge">0</span>
+          </a>
+          <a href="#reviews" class="hummatic-nav-link" data-tab="reviews" id="navReviews">
+            Reviews <span class="nav-badge nav-badge-purple hidden" id="navReviewsBadge">0</span>
+          </a>
+          <a href="#admin" class="hummatic-nav-link nav-admin-link hidden" data-tab="admin" id="navAdmin">
+            <span>👑 Admin Control</span>
+          </a>
+        </nav>
       </div>
 
-      <div class="header-center">
-        <div class="global-search-bar">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="globalSearchInput" placeholder="Quick search by Phone (+91), Patient Name, or ID... [Alt + /]" />
-          <span class="search-shortcut">Alt + /</span>
-        </div>
-      </div>
-
-      <div class="header-right">
-        <!-- Telephony Live Status -->
-        <div class="system-status-chip" title="Hospital Telephony Integration Active">
-          <span class="status-indicator-dot online"></span>
-          <span class="status-text">Telephony: Ready</span>
+      <div class="hummatic-nav-right">
+        <!-- Telephony Status Indicator -->
+        <div class="telephony-indicator" title="Hospital Telephony & MacroDroid Mobile Sync Gateway Ready">
+          <span class="telephony-pulse"></span>
+          <span class="telephony-text" id="telephonyStatusText">Telephony: Ready</span>
         </div>
 
-        <!-- Executive Status Switcher -->
-        <div class="executive-status-picker">
-          <button id="agentStatusBtn" class="status-btn online" title="Click to cycle availability status">
-            <span class="dot"></span>
-            <span id="agentStatusLabel">Online</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <!-- Executive Profile & Hospital Tenant Menu -->
+        <div class="hummatic-user-dropdown" id="userDropdownWrapper">
+          <button class="hummatic-user-btn user-profile-badge" id="userMenuToggleBtn" aria-expanded="false" title="Account & Tenant Options">
+            <span class="user-profile-badge-inner" id="userProfileBadge" style="display: inline-flex; align-items: center; gap: 6px;">
+              <span class="user-display-name" id="userProfileName">SSM Hospital Executive</span>
+              <span class="user-status-dot online" id="userStatusDot" title="Executive Online"></span>
+            </span>
+            <svg class="dropdown-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
-        </div>
 
-        <!-- User Avatar & Profile -->
-        <div class="user-profile-menu">
-          <div class="avatar" id="userAvatar">EX</div>
-          <div class="user-meta">
-            <span class="user-name" id="userProfileName">CRM Executive</span>
-            <span class="user-role" id="userProfileRole">Executive</span>
+          <!-- Dropdown Menu -->
+          <div class="hummatic-dropdown-menu hidden" id="userDropdownMenu">
+            <div class="dropdown-header">
+              <div class="dropdown-user-role" id="userProfileRole">Executive</div>
+              <div class="dropdown-hospital-name" id="currentHospitalDisplay">SSM Hospital</div>
+            </div>
+            <button class="dropdown-item admin-only-item hidden" id="dropdownAdminLink">
+              <span style="font-size: 14px;">👑</span>
+              <span>Admin Dashboard</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section-title">SWITCH HOSPITAL TENANT</div>
+            <button class="dropdown-item switch-tenant-btn" data-hospital="SSM" data-email="ssm@hospital.com">
+              <span class="tenant-dot ssm"></span>
+              <span>SSM Hospital</span>
+            </button>
+            <button class="dropdown-item switch-tenant-btn" data-hospital="SHH" data-email="executive@santasa.com">
+              <span class="tenant-dot shh"></span>
+              <span>Santasa Hassan Hospital</span>
+            </button>
+            <button class="dropdown-item switch-tenant-btn" data-hospital="SMH" data-email="mysore@santasa.com">
+              <span class="tenant-dot smh"></span>
+              <span>Santasa Mysore Hospital</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item logout-item" id="logoutBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Logout</span>
+            </button>
           </div>
-          <button class="btn btn-sm btn-outline logout-btn" id="logoutBtn" title="Sign out of CRM">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span>Logout</span>
-          </button>
         </div>
       </div>
     </header>
@@ -107,643 +152,1393 @@
       </div>
     </div>
 
-    <!-- Main 3-Column Workspace Layout -->
-    <div class="crm-main-layout">
-      <!-- Left Sidebar Navigation -->
-      <aside class="crm-sidebar" id="mainSidebar">
-        <div class="sidebar-section">
-          <div class="section-title">WORK QUEUES</div>
-          <nav class="nav-menu">
-            <a href="#today" class="nav-item active" data-view="today" id="navToday">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </span>
-              <span class="nav-text">Today's Workspace</span>
-              <span class="badge count-new" id="countTodayBadge">0</span>
-            </a>
-            <a href="#reminders" class="nav-item" data-view="reminders" id="navReminders">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              </span>
-              <span class="nav-text">Due Reminders</span>
-              <span class="badge count-due pulse-reminder" id="countRemindersBadge">0</span>
-            </a>
-            <a href="#followups" class="nav-item" data-view="followups" id="navFollowups">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </span>
-              <span class="nav-text">Due Follow-ups</span>
-              <span class="badge count-due" id="countDueBadge">0</span>
-            </a>
-            <a href="#overdue" class="nav-item" data-view="overdue" id="navOverdue">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              </span>
-              <span class="nav-text">Overdue Follow-ups</span>
-              <span class="badge count-overdue" id="countOverdueBadge">0</span>
-            </a>
-            <a href="#appointments" class="nav-item" data-view="appointments" id="navAppointments">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              </span>
-              <span class="nav-text">Appointments</span>
-              <span class="badge count-appts" id="countApptsBadge">0</span>
-            </a>
-          </nav>
-        </div>
+    <!-- MAIN APP VIEWS CONTAINER -->
+    <main class="hummatic-main-content">
 
-        <div class="sidebar-section">
-          <div class="section-title">PIPELINE & CHANNELS</div>
-          <nav class="nav-menu">
-            <a href="#all-leads" class="nav-item" data-view="all-leads" id="navAllLeads">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </span>
-              <span class="nav-text">All Patient Leads</span>
-              <span class="count-subtle" id="countAllLeads">0</span>
-            </a>
-            <a href="#reports" class="nav-item" data-view="reports" id="navReports">
-              <span class="nav-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </span>
-              <span class="nav-text">Conversion & Reports</span>
-            </a>
-          </nav>
-        </div>
-
-        <div class="sidebar-footer">
-          <div class="system-health-pill" id="systemHealthIndicator">
-            <span class="health-dot green"></span>
-            <span>Supabase Cloud Connected</span>
+      <!-- ============================================================== -->
+      <!-- VIEW 1: HOME / DASHBOARD (Matching Screenshot 1) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view" id="dashboardView">
+        <div class="hummatic-page-container">
+          
+          <!-- Welcome User Banner -->
+          <div class="welcome-user-card">
+            <div class="welcome-avatar-box">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <h1 class="welcome-title" id="dashboardWelcomeTitle">Welcome SSM Hospital Executive</h1>
           </div>
-        </div>
-      </aside>
 
-      <!-- Center Leads Queue Column -->
-      <section class="crm-lead-queue-panel" id="leadQueuePanel">
-        <div class="queue-header">
-          <div class="queue-title-row">
-            <h2 id="queueTitle">Patient Leads Queue</h2>
-            <div class="queue-actions">
-              <button class="btn btn-sm btn-secondary" id="refreshQueueBtn" title="Sync latest queue">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                <span>Refresh</span>
-              </button>
-              <button class="btn btn-sm btn-primary" id="newLeadBtn">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span>New Lead</span>
-              </button>
+          <!-- KPI Metric Cards Grid — Single Row Full Width Overview -->
+          <div class="kpi-cards-grid">
+            <div class="kpi-card kpi-card-blue">
+              <div class="kpi-card-header">
+                <span class="kpi-label">Total Leads</span>
+                <span class="kpi-icon-wrap blue">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+              </div>
+              <div class="kpi-value" id="kpiTotalLeads">0</div>
+              <div class="kpi-subtext">Overall Pipeline</div>
+            </div>
+
+            <div class="kpi-card kpi-card-teal">
+              <div class="kpi-card-header">
+                <span class="kpi-label">Today's Leads</span>
+                <span class="kpi-icon-wrap teal">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+              </div>
+              <div class="kpi-value" id="kpiTodayLeads">0</div>
+              <div class="kpi-subtext">Registered Today</div>
+            </div>
+
+            <div class="kpi-card kpi-card-red">
+              <div class="kpi-card-header">
+                <span class="kpi-label">Missed Calls</span>
+                <span class="kpi-icon-wrap red">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.8 19.8 0 0 1-3.11-8.69 2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.1 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+                </span>
+              </div>
+              <div class="kpi-value" id="kpiMissedCalls">0</div>
+              <div class="kpi-subtext">Requires Attention</div>
+            </div>
+
+            <div class="kpi-card kpi-card-purple">
+              <div class="kpi-card-header">
+                <span class="kpi-label">Pending Reviews</span>
+                <span class="kpi-icon-wrap purple">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+                </span>
+              </div>
+              <div class="kpi-value" id="kpiPendingReviews">0</div>
+              <div class="kpi-subtext">Awaiting Action</div>
             </div>
           </div>
-          <div class="queue-filters">
-            <button class="filter-chip active" data-filter="all" id="filterAll">All</button>
-            <button class="filter-chip" data-filter="new" id="filterNew">New</button>
-            <button class="filter-chip" data-filter="followup" id="filterFollowup">Follow-up</button>
-            <button class="filter-chip" data-filter="appointment" id="filterAppt">Appt</button>
-            <button class="filter-chip" data-filter="converted" id="filterConverted">IVF Active</button>
-          </div>
-        </div>
 
-        <!-- Leads List View -->
-        <div class="leads-list" id="leadsListContainer">
-          <div class="empty-state">Loading live leads from Supabase...</div>
+          <!-- Section: Today's Leads -->
+          <div class="content-card">
+            <div class="section-heading-teal">
+              <span class="teal-bar"></span>
+              <h2>Today's Leads</h2>
+            </div>
+
+            <div class="table-responsive">
+              <table class="hummatic-table" id="todayLeadsTable">
+                <thead>
+                  <tr>
+                    <th>Created Date</th>
+                    <th>Name</th>
+                    <th>Phone Number</th>
+                    <th>Lead Status</th>
+                  </tr>
+                </thead>
+                <tbody id="todayLeadsTableBody">
+                  <tr>
+                    <td colspan="4" class="table-loading">Loading today's leads...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="show-more-row">
+              <a href="#leads" class="show-more-link" id="showMoreLeadsBtn">Show more</a>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      <!-- Right Active Patient Workspace -->
-      <main class="crm-lead-detail-panel" id="leadDetailPanel">
-        <!-- Mobile Back Button -->
-        <div class="mobile-back-row">
-          <button class="mobile-back-btn" id="mobileBackToLeadsBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-            <span>Back to Leads Queue</span>
-          </button>
-        </div>
+      <!-- ============================================================== -->
+      <!-- VIEW 2: LEADS LIST & SEARCH/FILTER (Matching Screenshots 2 & 3) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="leadsView">
+        <div class="hummatic-page-container">
 
-        <!-- Lead Hero & Fast Action Header -->
-        <div class="lead-hero-banner" id="leadHeroBanner">
-          <div class="patient-identity">
-            <div class="patient-name-row">
-              <h1 id="detailPatientName" class="patient-name">Select a Patient</h1>
-              <div class="stage-select-wrapper">
-                <span class="stage-label">Status:</span>
-                <select id="detailStageSelect" class="stage-dropdown-select" title="Change Patient Lead Status">
-                  <optgroup label="✅ Valid Leads">
+          <!-- Single Combined Header Toolbar (All Leads, Search, Filter Dropdown, Export CSV, Create Lead) -->
+          <div class="leads-unified-header-card">
+            <div class="leads-bar-left">
+              <span class="leads-count-label" id="leadsCountLabel">All Leads</span>
+              <button class="btn-icon-refresh" id="btnRefreshLeads" title="Refresh Leads">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
+              <label class="auto-refresh-toggle" title="Auto-refresh every 2 minutes">
+                <input type="checkbox" id="autoRefreshToggle" />
+                <span>Auto-refresh</span>
+              </label>
+            </div>
+
+            <!-- Converged Controls: Search + Filter Dropdown + Export CSV + Create Lead -->
+            <div class="leads-bar-controls">
+              <!-- Compact Combined Search -->
+              <div class="inline-search-wrapper">
+                <span class="search-icon-prefix">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <input type="text" id="leadSearchInput" class="hummatic-input inline-search-input" placeholder="Search name or phone..." />
+              </div>
+
+              <!-- Compact Filter Dropdown Trigger & Panel -->
+              <div class="filter-dropdown-wrapper">
+                <button type="button" class="btn-filter-dropdown-toggle" id="btnToggleFilterDropdown" onclick="window.toggleFilterDropdown(event)" aria-haspopup="true" aria-expanded="false" title="Toggle Leads Filter">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                  <span class="filter-btn-text">Filter</span>
+                  <span class="filter-active-dot hidden" id="activeFilterBadge" title="Filter active"></span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="filter-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+
+                <!-- Floating Dropdown Popover (Zero Screen Clutter) -->
+                <div class="filter-dropdown-popover hidden" id="filterDropdownPanel">
+                  <div class="filter-popover-header">
+                    <span class="filter-popover-title">Filter Leads</span>
+                    <button type="button" class="btn-close-filter-popover" id="btnCloseFilterPanel" title="Close filter">&times;</button>
+                  </div>
+                  <form id="leadFilterForm" class="filter-popover-form">
+                    <div class="form-group-compact">
+                      <label>Lead Status</label>
+                      <select id="filterLeadStatus" class="hummatic-select compact-select">
+                        <option value="">All Statuses</option>
+                        <option value="Follow-up">Follow-up</option>
+                        <option value="Valid - Need Appointment">Valid - Need Appointment</option>
+                        <option value="Valid - Consultation done">Valid - Consultation done</option>
+                        <option value="Valid - Followup">Valid - Followup</option>
+                        <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
+                        <option value="Valid - Surgery done">Valid - Surgery done</option>
+                        <option value="Invalid - Wrong number">Invalid - Wrong number</option>
+                        <option value="Invalid - Ringing not received">Invalid - Ringing not received</option>
+                        <option value="New">New</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group-compact">
+                      <label>Patient Type</label>
+                      <select id="filterPatientType" class="hummatic-select compact-select">
+                        <option value="">All Types</option>
+                        <option value="Digital Patient">Digital Patient</option>
+                        <option value="Existing Patient">Existing Patient</option>
+                        <option value="New Patient Enquiry">New Patient Enquiry</option>
+                        <option value="Walk-in Patient">Walk-in Patient</option>
+                      </select>
+                    </div>
+
+                    <div class="form-row-2col-compact">
+                      <div class="form-group-compact">
+                        <label>From Date</label>
+                        <input type="date" id="filterFromDate" class="hummatic-input compact-input" />
+                      </div>
+                      <div class="form-group-compact">
+                        <label>To Date</label>
+                        <input type="date" id="filterToDate" class="hummatic-input compact-input" />
+                      </div>
+                    </div>
+
+                    <div class="filter-popover-actions">
+                      <button type="button" class="btn-text-reset" id="resetFilterBtn">Reset</button>
+                      <button type="submit" class="btn-teal-apply" id="applyFilterBtn">Apply</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Export CSV & Create a Lead Buttons -->
+              <div class="leads-converged-buttons">
+                <button type="button" class="btn-export-csv" id="btnExportCSV" title="Export visible leads to CSV">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Export CSV</span>
+                </button>
+
+                <button type="button" class="btn-create-lead" id="goToCreateLeadBtn">
+                  <span class="plus-icon">+</span>
+                  <span>Create a lead</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assigned Leads Table Card -->
+          <div class="content-card" style="margin-top: 1.5rem;">
+            <div class="section-heading-teal">
+              <span class="teal-bar"></span>
+              <h2>Assigned Leads</h2>
+            </div>
+
+            <div class="table-responsive assigned-leads-scroll">
+              <table class="hummatic-table table-leads" id="assignedLeadsTable">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Created Date</th>
+                    <th>Name</th>
+                    <th>Patient Name</th>
+                    <th>Contact Number</th>
+                    <th>Call Status</th>
+                    <th>Patient Type</th>
+                    <th>Consultation Date</th>
+                    <th>Surgery Requirement</th>
+                    <th>Surgery Date</th>
+                  </tr>
+                </thead>
+                <tbody id="assignedLeadsTableBody">
+                  <tr>
+                    <td colspan="12" class="table-loading">Loading assigned leads...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination-footer">
+              <span id="leadsPaginationInfo">Showing 0 leads</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- VIEW 3: CREATE A NEW LEAD (Matching Screenshots 4 & 5) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="createLeadView">
+        <div class="hummatic-page-container">
+          
+          <div class="content-card form-page-card">
+            
+            <!-- Card-Attached Header with Integrated Back Navigation -->
+            <div class="card-attached-header">
+              <div class="card-attached-left">
+                <button type="button" class="btn-card-back" id="btnBackFromCreateLead" title="Back">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                  <span>Back</span>
+                </button>
+                <div class="card-attached-divider"></div>
+                <div class="card-attached-title-group">
+                  <div class="section-heading-teal" style="margin: 0; padding: 0;">
+                    <span class="teal-bar"></span>
+                    <h2>Create A New Lead</h2>
+                  </div>
+                  <p class="form-subtitle" style="margin: 2px 0 0 0;">Fill up the below fields to create a new lead. * are mandatory fields.</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="createLeadForm" class="full-lead-form">
+              
+              <!-- Section: General Information -->
+              <div class="form-section-header">
+                <span class="teal-bar"></span>
+                <h3>General Information:</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>Date <span class="req">*</span></label>
+                  <input type="date" id="inputFormDate" class="hummatic-input" required />
+                </div>
+                <div class="form-group">
+                  <!-- Empty counterpart for row balance -->
+                </div>
+
+                <div class="form-group">
+                  <label>Name</label>
+                  <input type="text" id="inputFormLeadName" class="hummatic-input" placeholder="Enter the Name" />
+                </div>
+                <div class="form-group">
+                  <label>Patient Name <span class="req">*</span></label>
+                  <input type="text" id="inputFormPatientName" class="hummatic-input" required placeholder="Enter the Patient Name" />
+                </div>
+
+                <div class="form-group">
+                  <label>Contact Number <span class="req">*</span></label>
+                  <input type="tel" id="inputFormContactNumber" class="hummatic-input" required placeholder="Enter Contact Number" />
+                </div>
+                <div class="form-group">
+                  <label>Registered Number</label>
+                  <input type="text" id="inputFormRegisteredNumber" class="hummatic-input" placeholder="Enter the Registered Number" />
+                </div>
+
+                <div class="form-group">
+                  <label>Email ID</label>
+                  <input type="email" id="inputFormEmail" class="hummatic-input" placeholder="Enter Email ID" />
+                </div>
+                <div class="form-group">
+                  <label>Treatment</label>
+                  <input type="text" id="inputFormTreatment" class="hummatic-input" placeholder="Enter the Treatment" />
+                </div>
+
+                <div class="form-group full-width">
+                  <label>Message</label>
+                  <textarea id="inputFormMessage" rows="3" class="hummatic-textarea" placeholder="Enter the message from patient"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Patient Type</label>
+                  <select id="inputFormPatientType" class="hummatic-select">
+                    <option value="Enquiry">--- Select ---</option>
+                    <option value="Digital Patient">Digital Patient</option>
+                    <option value="Existing Patient">Existing Patient</option>
+                    <option value="New Patient Enquiry">New Patient Enquiry</option>
+                    <option value="Walk-in Patient">Walk-in Patient</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Patient ID</label>
+                  <input type="text" id="inputFormPatientId" class="hummatic-input" placeholder="Enter Patient ID" />
+                </div>
+
+                <div class="form-group">
+                  <label>Lead Source</label>
+                  <select id="inputFormLeadSource" class="hummatic-select">
+                    <option value="Manual">--- Select ---</option>
+                    <option value="IVR Call">IVR Call</option>
+                    <option value="Incoming Call">Incoming Call</option>
+                    <option value="Chatbot - Website">Chatbot - Website</option>
+                    <option value="Website - Contact Us">Website - Contact Us</option>
+                    <option value="Website - Home">Website - Home</option>
+                    <option value="Website - Book Appointment">Website - Book Appointment</option>
+                    <option value="Website - IVF & Fertility">Website - IVF & Fertility</option>
+                    <option value="Walk-in">Walk-in</option>
+                    <option value="Google Ads">Google Ads</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Lead Status</label>
+                  <select id="inputFormLeadStatus" class="hummatic-select">
+                    <option value="New">--- Select ---</option>
                     <option value="Valid - Need Appointment">Valid - Need Appointment</option>
                     <option value="Valid - Consultation done">Valid - Consultation done</option>
                     <option value="Valid - Followup">Valid - Followup</option>
                     <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
                     <option value="Valid - Surgery done">Valid - Surgery done</option>
-                    <option value="Valid - Surgery Enquiry">Valid - Surgery Enquiry</option>
-                    <option value="Valid - Dropped pricing issue">Valid - Dropped pricing issue</option>
-                    <option value="Valid - Dropped location issue">Valid - Dropped location issue</option>
-                    <option value="Valid - Lost to compitition">Valid - Lost to compitition</option>
-                    <option value="Valid - Patient not willing now">Valid - Patient not willing now</option>
-                  </optgroup>
-                  <optgroup label="📋 Enquiries & Admin">
-                    <option value="Enquiry - Insurance">Enquiry - Insurance</option>
-                    <option value="Enquiry - Job Enquiry">Enquiry - Job Enquiry</option>
-                    <option value="Enquiry - Other">Enquiry - Other</option>
-                    <option value="Complaint">Complaint</option>
-                    <option value="Medical Reps">Medical Reps</option>
-                  </optgroup>
-                  <optgroup label="⚠️ Invalid / Ringing">
-                    <option value="Ringing no response">Ringing no response</option>
-                    <option value="Invalid - No response">Invalid - No response</option>
-                    <option value="Invalid - Did not enquire">Invalid - Did not enquire</option>
-                    <option value="Invalid - Out of network coverage">Invalid - Out of network coverage</option>
-                    <option value="Invalid - Switched off">Invalid - Switched off</option>
                     <option value="Invalid - Wrong number">Invalid - Wrong number</option>
-                  </optgroup>
+                    <option value="Invalid - Ringing not received">Invalid - Ringing not received</option>
+                    <option value="New">New</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Consultation Date</label>
+                  <input type="date" id="inputFormConsultationDate" class="hummatic-input" />
+                </div>
+                <div class="form-group">
+                  <label>Surgery Date</label>
+                  <input type="date" id="inputFormSurgeryDate" class="hummatic-input" />
+                </div>
+
+                <div class="form-group">
+                  <label>Surgery Requirement</label>
+                  <input type="text" id="inputFormSurgeryRequirement" class="hummatic-input" placeholder="Enter Surgery Requirement" />
+                </div>
+                <div class="form-group">
+                  <label>Surgery Details</label>
+                  <input type="text" id="inputFormSurgeryDetails" class="hummatic-input" placeholder="Enter Surgery Details" />
+                </div>
+              </div>
+
+              <!-- Section: IVR Call Details -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>IVR Call Details:</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>Destination Number</label>
+                  <input type="text" id="inputFormDestinationNumber" class="hummatic-input" placeholder="Enter Executive Number" />
+                </div>
+                <div class="form-group">
+                  <label>Start time</label>
+                  <input type="datetime-local" id="inputFormStartTime" class="hummatic-input" placeholder="Enter Start Date and time" />
+                </div>
+
+                <div class="form-group">
+                  <label>Call Status</label>
+                  <input type="text" id="inputFormCallStatus" class="hummatic-input" placeholder="Enter Call Status" />
+                </div>
+                <div class="form-group">
+                  <label>Direction</label>
+                  <select id="inputFormDirection" class="hummatic-select">
+                    <option value="Incoming">Incoming</option>
+                    <option value="Outgoing">Outgoing</option>
+                  </select>
+                </div>
+
+                <div class="form-group full-width">
+                  <label>Call Recording File (.mp3/.m4a)</label>
+                  <input type="file" id="inputFormRecordingFile" class="hummatic-input" accept="audio/*" />
+                </div>
+              </div>
+
+              <!-- Section: Remarks -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>Remarks:</h3>
+              </div>
+
+              <div class="form-group full-width">
+                <textarea id="inputFormRemarks" rows="3" class="hummatic-textarea" placeholder="Enter remarks..."></textarea>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="form-actions-bar">
+                <button type="submit" class="btn-teal-submit" id="submitLeadBtn">Submit</button>
+                <button type="button" class="btn-grey-cancel" id="cancelCreateLeadBtn">Cancel</button>
+              </div>
+
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- VIEW 4: UPDATE CLIENT LEAD (Matching Screenshots 1 & 2) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="updateClientLeadView">
+        <div class="hummatic-page-container">
+          
+          <!-- Update Lead Form Card with Integrated Attached Header -->
+          <div class="content-card form-page-card">
+            
+            <!-- Card-Attached Header with Integrated Back Navigation & Actions -->
+            <div class="card-attached-header">
+              <div class="card-attached-left">
+                <button type="button" class="btn-card-back" id="btnBackFromUpdateLead" title="Back">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                  <span>Back</span>
+                </button>
+                <div class="card-attached-divider"></div>
+                <div class="card-attached-title-group">
+                  <div class="section-heading-teal" style="margin: 0; padding: 0;">
+                    <span class="teal-bar"></span>
+                    <h2 id="updateLeadPageTitle">Update Client Lead</h2>
+                  </div>
+                  <p class="form-subtitle" style="margin: 2px 0 0 0;">Review &amp; update patient consultation, treatment, and outcome details</p>
+                </div>
+              </div>
+
+              <div class="card-attached-actions">
+                <button type="button" class="btn-whatsapp-header" id="btnOpenWaReminderHeader" title="Send prefilled WhatsApp reminder to this patient">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  <span>WhatsApp Reminder</span>
+                </button>
+
+                <button type="button" class="btn-schedule-call" id="btnOpenScheduleCallFromUpdate">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                  <span>Schedule Call</span>
+                </button>
+              </div>
+            </div>
+
+            <form id="updateLeadForm" class="full-lead-form">
+              <input type="hidden" id="updateLeadId" />
+
+              <!-- Card 1: Lead Information -->
+              <div class="form-section-header">
+                <span class="teal-bar"></span>
+                <h3>Lead Information</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>Created date</label>
+                  <input type="text" id="updateLeadCreatedDate" class="hummatic-input" readonly disabled />
+                </div>
+                <div class="form-group"></div>
+
+                <div class="form-group">
+                  <label>Name</label>
+                  <input type="text" id="updateLeadName" class="hummatic-input" placeholder="Enter Name" />
+                </div>
+                <div class="form-group">
+                  <label>Patient Name <span class="req">*</span></label>
+                  <input type="text" id="updatePatientName" class="hummatic-input" required placeholder="Enter Patient Name" />
+                </div>
+
+                <div class="form-group">
+                  <label>Contact Number <span class="req">*</span></label>
+                  <input type="tel" id="updateContactNumber" class="hummatic-input" required placeholder="Enter Contact Number" />
+                </div>
+                <div class="form-group">
+                  <label>Registered Number</label>
+                  <input type="text" id="updateRegisteredNumber" class="hummatic-input" placeholder="Enter Registered Number" />
+                </div>
+
+                <div class="form-group">
+                  <label>Email ID</label>
+                  <input type="email" id="updateEmail" class="hummatic-input" placeholder="Enter Email ID" />
+                </div>
+                <div class="form-group">
+                  <label>Treatment</label>
+                  <input type="text" id="updateTreatment" class="hummatic-input" placeholder="Enter Treatment" />
+                </div>
+
+                <div class="form-group full-width">
+                  <label>Message</label>
+                  <textarea id="updateMessage" rows="2" class="hummatic-textarea" placeholder="Patient message or requirement"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Patient Type <span class="req">*</span></label>
+                  <select id="updatePatientType" class="hummatic-select">
+                    <option value="Enquiry">-- Select ---</option>
+                    <option value="Digital Patient">Digital Patient</option>
+                    <option value="Existing Patient">Existing Patient</option>
+                    <option value="New Patient Enquiry">New Patient Enquiry</option>
+                    <option value="Walk-in Patient">Walk-in Patient</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Patient ID</label>
+                  <input type="text" id="updatePatientId" class="hummatic-input" placeholder="Enter Patient ID" />
+                </div>
+
+                <div class="form-group">
+                  <label>Status</label>
+                  <select id="updateLeadStatus" class="hummatic-select">
+                    <option value="">Select a status</option>
+                    <option value="Valid - Need Appointment">Valid - Need Appointment</option>
+                    <option value="Valid - Consultation done">Valid - Consultation done</option>
+                    <option value="Valid - Followup">Valid - Followup</option>
+                    <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
+                    <option value="Valid - Surgery done">Valid - Surgery done</option>
+                    <option value="Invalid - Wrong number">Invalid - Wrong number</option>
+                    <option value="Invalid - Ringing not received">Invalid - Ringing not received</option>
+                    <option value="New">New</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Consultation Date</label>
+                  <input type="date" id="updateConsultationDate" class="hummatic-input" />
+                </div>
+              </div>
+
+              <!-- Card 2: Surgery & Review Information -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>Surgery & Review Information</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>Surgery Date</label>
+                  <input type="date" id="updateSurgeryDate" class="hummatic-input" />
+                </div>
+                <div class="form-group">
+                  <label>Surgery Requirement</label>
+                  <input type="text" id="updateSurgeryRequirement" class="hummatic-input" placeholder="Enter Surgery Requirement" />
+                </div>
+
+                <div class="form-group full-width">
+                  <label>Surgery Details</label>
+                  <input type="text" id="updateSurgeryDetails" class="hummatic-input" placeholder="Enter Surgery Details" />
+                </div>
+
+                <div class="form-group">
+                  <label>Review Needed?</label>
+                  <select id="updateReviewNeeded" class="hummatic-select">
+                    <option value="">--- Select ---</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Review Period</label>
+                  <input type="text" id="updateReviewPeriod" class="hummatic-input" placeholder="Enter Review Period" />
+                </div>
+
+                <div class="form-group">
+                  <label>Next Review Date</label>
+                  <input type="date" id="updateNextReviewDate" class="hummatic-input" />
+                </div>
+                <div class="form-group">
+                  <label>Review Details</label>
+                  <input type="text" id="updateReviewDetails" class="hummatic-input" placeholder="Enter the Review Details" />
+                </div>
+              </div>
+
+              <!-- Card 3: IVR Call Details -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>IVR Call Details</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>Destination Number</label>
+                  <input type="text" id="updateDestinationNumber" class="hummatic-input" placeholder="Executive / Direct Number" />
+                </div>
+                <div class="form-group">
+                  <label>Start time</label>
+                  <input type="datetime-local" id="updateCallStartTime" class="hummatic-input" />
+                </div>
+
+                <div class="form-group">
+                  <label>Call Status</label>
+                  <input type="text" id="updateCallStatus" class="hummatic-input" placeholder="e.g. Answered, Missed" />
+                </div>
+                <div class="form-group">
+                  <label>Direction</label>
+                  <select id="updateCallDirection" class="hummatic-select">
+                    <option value="Incoming">Incoming</option>
+                    <option value="Outgoing">Outgoing</option>
+                  </select>
+                </div>
+
+                <div class="form-group full-width" id="updateAudioContainer">
+                  <label>Call Recording</label>
+                  <div class="audio-player-box" id="updateAudioPlayerBox" style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1rem;">
+                    <audio id="updateAudioPlayer" controls style="width: 100%; height: 36px;"></audio>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4: UTM Parameters -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>UTM Parameters</h3>
+              </div>
+
+              <div class="form-grid-2col">
+                <div class="form-group">
+                  <label>UTM Source</label>
+                  <input type="text" id="updateUtmSource" class="hummatic-input" placeholder="e.g. google, facebook" />
+                </div>
+                <div class="form-group">
+                  <label>UTM Medium</label>
+                  <input type="text" id="updateUtmMedium" class="hummatic-input" placeholder="e.g. cpc, referral" />
+                </div>
+
+                <div class="form-group">
+                  <label>UTM Campaign</label>
+                  <input type="text" id="updateUtmCampaign" class="hummatic-input" placeholder="e.g. ivf_brand_promo" />
+                </div>
+                <div class="form-group">
+                  <label>UTM Term</label>
+                  <input type="text" id="updateUtmTerm" class="hummatic-input" placeholder="e.g. best ivf hospital" />
+                </div>
+
+                <div class="form-group">
+                  <label>UTM Content</label>
+                  <input type="text" id="updateUtmContent" class="hummatic-input" placeholder="e.g. text_link_header" />
+                </div>
+                <div class="form-group">
+                  <label>Lead URL</label>
+                  <input type="url" id="updateLeadUrl" class="hummatic-input" placeholder="https://..." />
+                </div>
+              </div>
+
+              <!-- Card 5: Remarks -->
+              <div class="form-section-header" style="margin-top: 1.5rem;">
+                <span class="teal-bar"></span>
+                <h3>Remarks:</h3>
+              </div>
+
+              <div class="form-group full-width">
+                <textarea id="updateRemarks" rows="3" class="hummatic-textarea" placeholder="Enter Your Remark"></textarea>
+              </div>
+
+              <!-- Historical Remarks Timeline -->
+              <ul id="updateRemarksTimeline" class="remarks-timeline-list"></ul>
+
+              <!-- Action Bar -->
+              <div class="form-actions-bar" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn-teal-submit" id="btnSubmitUpdateClientLead">Submit</button>
+                <button type="button" class="btn-whatsapp-lead" id="btnWhatsAppUpdateLead">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                  WhatsApp
+                </button>
+                <button type="button" class="btn-print-lead" id="btnPrintLead">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                  Print
+                </button>
+              </div>
+
+            </form>
+
+            <!-- Card 6: Lead Other Details Timeline -->
+            <div class="form-section-header" style="margin-top: 1.5rem;">
+              <span class="teal-bar"></span>
+              <h3>Lead Other Details:</h3>
+            </div>
+            <div id="updateLeadTimeline" class="lead-timeline-container">
+              <p style="color:#94a3b8; font-size:13px; padding:8px 0;">Loading activity...</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- VIEW 5: CALL NOTIFICATIONS (Matching Screenshot 3) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="callNotificationsView">
+        <div class="hummatic-page-container">
+          
+          <div class="content-card full-table-card">
+            
+            <!-- Section Sub-Tab -->
+            <div class="view-sub-tabs">
+              <div class="sub-tab-item active">All Scheduled Calls</div>
+            </div>
+
+            <!-- DataTable Top Controls -->
+            <div class="datatable-controls-row">
+              <div class="dt-length">
+                Show 
+                <select id="callsPageSizeSelect" class="dt-select">
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+                entries
+              </div>
+
+              <div class="dt-search">
+                <label>Search: <input type="text" id="callsSearchInput" class="hummatic-input dt-search-input" /></label>
+              </div>
+            </div>
+
+            <!-- Table: All Scheduled Calls -->
+            <div class="table-responsive">
+              <table class="hummatic-table datatable-table" id="callsFeedTable">
+                <thead>
+                  <tr>
+                    <th>Date <span class="sort-arrows">⇅</span></th>
+                    <th>Name <span class="sort-arrows">⇅</span></th>
+                    <th>Contact Number <span class="sort-arrows">⇅</span></th>
+                    <th>Lead Owner <span class="sort-arrows">⇅</span></th>
+                    <th>Follow Up Date and Time <span class="sort-arrows">⇅</span></th>
+                    <th>Call Status <span class="sort-arrows">⇅</span></th>
+                    <th>Lead Status <span class="sort-arrows">⇅</span></th>
+                    <th>WhatsApp <span class="sort-arrows">⇅</span></th>
+                  </tr>
+                </thead>
+                <tbody id="callsFeedTableBody">
+                  <tr>
+                    <td colspan="8" class="table-loading">Loading scheduled calls...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Pagination -->
+            <div class="datatable-footer-row">
+              <div class="dt-info" id="callsCountInfo">Showing 0 to 0 of 0 entries</div>
+              <div class="dt-pagination" id="callsPagination">
+                <button class="btn-page-ctrl disabled">Previous</button>
+                <button class="btn-page-ctrl active">1</button>
+                <button class="btn-page-ctrl disabled">Next</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- VIEW 6: REVIEWS LIST (Matching Screenshot 4) -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="reviewsView">
+        <div class="hummatic-page-container">
+          
+          <div class="content-card full-table-card">
+            
+            <!-- Section Sub-Tab -->
+            <div class="view-sub-tabs">
+              <div class="sub-tab-item active">Reviews</div>
+            </div>
+
+            <!-- DataTable Top Controls -->
+            <div class="datatable-controls-row">
+              <div class="dt-length">
+                Show 
+                <select id="reviewsPageSizeSelect" class="dt-select">
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+                entries
+              </div>
+
+              <div class="dt-search">
+                <label>Search: <input type="text" id="reviewsSearchInput" class="hummatic-input dt-search-input" /></label>
+              </div>
+            </div>
+
+            <!-- Table: Reviews -->
+            <div class="table-responsive">
+              <table class="hummatic-table datatable-table" id="reviewsTable">
+                <thead>
+                  <tr>
+                    <th style="width: 70px;"></th>
+                    <th>Name <span class="sort-arrows">⇅</span></th>
+                    <th>Contact Number <span class="sort-arrows">⇅</span></th>
+                    <th>Latest Review Date <span class="sort-arrows">⇅</span></th>
+                    <th>Latest Review Details <span class="sort-arrows">⇅</span></th>
+                  </tr>
+                </thead>
+                <tbody id="reviewsTableBody">
+                  <tr>
+                    <td colspan="5" class="table-loading">Loading reviews...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Pagination -->
+            <div class="datatable-footer-row">
+              <div class="dt-info" id="reviewsCountInfo">Showing 0 to 0 of 0 entries</div>
+              <div class="dt-pagination" id="reviewsPagination">
+                <button class="btn-page-ctrl disabled">Previous</button>
+                <button class="btn-page-ctrl active">1</button>
+                <button class="btn-page-ctrl disabled">Next</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- VIEW 5: SUPER ADMIN CONTROL CENTER & MULTI-TENANT DASHBOARD    -->
+      <!-- ============================================================== -->
+      <section class="hummatic-view hidden" id="adminDashboardView">
+        <div class="hummatic-page-container">
+
+          <!-- Admin Control Header Banner -->
+          <div class="admin-header-banner">
+            <div class="admin-banner-left">
+              <div class="admin-shield-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="admin-badge-pill">SUPER ADMINISTRATOR</div>
+                <h1 class="admin-banner-title">Multi-Hospital Network Operations & Control Center</h1>
+                <p class="admin-banner-subtitle">Consolidated management across SSM Hospital, Santasa Hassan, and Santasa Mysore</p>
+              </div>
+            </div>
+
+            <div class="admin-banner-right">
+              <div class="admin-scope-selector-wrap">
+                <label class="admin-scope-label">Hospital Filter Scope:</label>
+                <select id="adminGlobalScopeSelect" class="admin-scope-select">
+                  <option value="ALL" selected>🌐 All Hospitals (Consolidated Network)</option>
+                  <option value="SSM">🏥 SSM Hospital (SSM Branch)</option>
+                  <option value="SHH">🏥 Santasa Hassan Hospital (SHH Branch)</option>
+                  <option value="SMH">🏥 Santasa Mysore Hospital (SMH Branch)</option>
                 </select>
               </div>
-              <span id="detailPriority" class="priority-pill priority-high">--</span>
-            </div>
-            <div class="patient-contact-row">
-              <span class="phone-display" id="detailPhone">--</span>
-              <span class="divider">•</span>
-              <span class="meta-item" id="detailLocation">--</span>
-              <span class="divider">•</span>
-              <span class="meta-item">Source: <strong id="detailSource">--</strong></span>
-              <span class="divider">•</span>
-              <span class="meta-item">Dept: <strong id="detailDept">--</strong></span>
-            </div>
-          </div>
 
-          <!-- Rapid Action Bar (Hierarchical) -->
-          <div class="rapid-action-toolbar">
-            <button class="action-btn btn-call" id="actionCallBtn" title="Click to Call Patient">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              <span class="btn-label">CALL PATIENT</span>
-            </button>
-            <button class="action-btn btn-whatsapp" id="actionWhatsappBtn" title="Send WhatsApp Message">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-              <span class="btn-label">WHATSAPP</span>
-            </button>
-            <button class="action-btn btn-action-outline" id="actionFollowupBtn" title="Schedule Callback/Follow-up">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span>SCHEDULE FOLLOW-UP</span>
-            </button>
-            <button class="action-btn btn-action-outline" id="actionApptBtn" title="Book Doctor Consultation">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              <span>BOOK APPT</span>
-            </button>
-            <button class="action-btn btn-action-outline" id="actionNoteBtn" title="Add Consultation Note">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>ADD NOTE</span>
-            </button>
-            <button class="action-btn btn-action-outline" id="actionOutcomeBtn" title="Record Treatment Outcome / Funnel Stage">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span>OUTCOME</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 2-Column Split: Clinical Patient Context (Left) vs Real-Time Activity Feed (Right) -->
-        <div class="lead-workspace-body">
-          <div class="detail-card patient-details-card">
-            <div class="card-header-with-action">
-              <h3>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Patient Medical & Clinical Profile
-              </h3>
-              <button class="btn btn-xs btn-outline" id="editPatientProfileBtn" title="Edit Patient Lead Details">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                <span>Edit Profile</span>
+              <button class="btn-refresh-admin" id="btnRefreshAdminData" title="Refresh All Admin Metrics">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span>Refresh</span>
               </button>
             </div>
-            
-            <!-- Section 1: General Information -->
-            <div class="profile-sub-section">
-              <span class="sub-section-title">General Information</span>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Patient Name</span>
-                  <span class="info-val" id="profileName">--</span>
+          </div>
+
+          <!-- Admin Sub-Navigation Pills -->
+          <div class="admin-tabs-nav">
+            <button class="admin-tab-btn active" data-admin-tab="overview">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+              <span>Network Overview</span>
+            </button>
+            <button class="admin-tab-btn" data-admin-tab="staff">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Staff & Users (<span id="adminStaffCountBadge">4</span>)</span>
+            </button>
+            <button class="admin-tab-btn" data-admin-tab="leads">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              <span>Cross-Hospital Leads</span>
+            </button>
+            <button class="admin-tab-btn" data-admin-tab="telephony">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              <span>MacroDroid & Telephony</span>
+            </button>
+            <button class="admin-tab-btn" data-admin-tab="settings">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Branch Configuration</span>
+            </button>
+          </div>
+
+          <!-- SUB-PANEL 1: NETWORK OVERVIEW -->
+          <div class="admin-tab-content active" id="adminPanelOverview">
+            <!-- 4 Admin Metrics KPI Cards -->
+            <div class="kpi-cards-grid admin-kpis">
+              <div class="kpi-card kpi-card-blue">
+                <div class="kpi-card-header">
+                  <span class="kpi-label">Total Network Leads</span>
+                  <span class="kpi-icon-wrap blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Contact Number</span>
-                  <span class="info-val phone" id="profilePhone">--</span>
+                <div class="kpi-value" id="adminKpiTotalLeads">52</div>
+                <div class="kpi-subtext" id="adminKpiTotalLeadsSub">Across 3 Hospital Tenants</div>
+              </div>
+
+              <div class="kpi-card kpi-card-teal">
+                <div class="kpi-card-header">
+                  <span class="kpi-label">Today's Inquiries</span>
+                  <span class="kpi-icon-wrap teal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Registered Number</span>
-                  <span class="info-val" id="profileRegPhone">--</span>
+                <div class="kpi-value" id="adminKpiTodayLeads">0</div>
+                <div class="kpi-subtext">Registered Today</div>
+              </div>
+
+              <div class="kpi-card kpi-card-purple">
+                <div class="kpi-card-header">
+                  <span class="kpi-label">Consultations Done</span>
+                  <span class="kpi-icon-wrap purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Patient Type</span>
-                  <span class="info-val" id="profilePatientType">Enquiry</span>
+                <div class="kpi-value" id="adminKpiConverted">14</div>
+                <div class="kpi-subtext">Completed Consultations</div>
+              </div>
+
+              <div class="kpi-card kpi-card-red">
+                <div class="kpi-card-header">
+                  <span class="kpi-label">Call Recordings Synced</span>
+                  <span class="kpi-icon-wrap red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Patient ID (MRN)</span>
-                  <span class="info-val" id="profilePatientId">--</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Email ID</span>
-                  <span class="info-val" id="profileEmail">--</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Age & Gender</span>
-                  <span class="info-val" id="profileAgeGender">--</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Location / City</span>
-                  <span class="info-val" id="profileCity">--</span>
-                </div>
+                <div class="kpi-value" id="adminKpiCallsSynced">28</div>
+                <div class="kpi-subtext">MacroDroid Auto-Uploads</div>
               </div>
             </div>
 
-            <!-- Section 2: Clinical & Surgery Details -->
-            <div class="profile-sub-section">
-              <span class="sub-section-title">Clinical & Surgery Details</span>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Treatment / Package</span>
-                  <span class="info-val highlight-treatment" id="profileTreatment">--</span>
+            <!-- Hospital Branch Comparative Breakdown Table -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+              <div class="section-heading-teal">
+                <span class="teal-bar"></span>
+                <h2>Hospital Tenant Comparison & Pipeline Health</h2>
+              </div>
+              <div class="table-responsive">
+                <table class="hummatic-table">
+                  <thead>
+                    <tr>
+                      <th>Hospital Branch</th>
+                      <th>Tenant Code</th>
+                      <th>Total Leads</th>
+                      <th>In Progress</th>
+                      <th>Consultations Done</th>
+                      <th>MacroDroid Status</th>
+                      <th>Tenant Switch</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminBranchComparisonTableBody">
+                    <tr><td colspan="7" class="table-loading">Loading network comparison...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 2: STAFF & USERS -->
+          <div class="admin-tab-content hidden" id="adminPanelStaff">
+            <div class="content-card">
+              <div class="admin-toolbar-row">
+                <div class="section-heading-teal" style="margin-bottom: 0;">
+                  <span class="teal-bar"></span>
+                  <h2>Hospital Staff & Executive Access Control</h2>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Department</span>
-                  <span class="info-val" id="profileDept">Fertility & IVF</span>
+                <button class="btn-teal-submit" id="btnOpenAddStaffModal">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>+ Add Executive / Staff</span>
+                </button>
+              </div>
+              <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="hummatic-table">
+                  <thead>
+                    <tr>
+                      <th>Staff Name</th>
+                      <th>Email Address</th>
+                      <th>Assigned Hospital</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Admin Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminStaffTableBody">
+                    <tr><td colspan="6" class="table-loading">Loading hospital staff directory...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 3: CROSS-HOSPITAL LEADS REASSIGNMENT -->
+          <div class="admin-tab-content hidden" id="adminPanelLeads">
+            <div class="content-card">
+              <div class="admin-toolbar-row">
+                <div class="section-heading-teal" style="margin-bottom: 0;">
+                  <span class="teal-bar"></span>
+                  <h2>Cross-Hospital Lead Pipeline & Reassignment</h2>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Consultation Date</span>
-                  <span class="info-val" id="profileConsultDate">--</span>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="adminLeadSearchInput" class="hummatic-input" placeholder="Search patient name or phone..." style="width: 250px;" />
+                  <select id="adminLeadHospitalFilter" class="hummatic-select" style="width: 180px;">
+                    <option value="ALL">All Branches</option>
+                    <option value="SSM">SSM Hospital</option>
+                    <option value="SHH">Santasa Hassan</option>
+                    <option value="SMH">Santasa Mysore</option>
+                  </select>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Surgery Date</span>
-                  <span class="info-val" id="profileSurgeryDate">--</span>
+              </div>
+              <div class="table-responsive" style="margin-top: 1rem;">
+                <table class="hummatic-table">
+                  <thead>
+                    <tr>
+                      <th>Created</th>
+                      <th>Patient Name</th>
+                      <th>Phone</th>
+                      <th>Current Branch</th>
+                      <th>Treatment / Enquiry</th>
+                      <th>Status</th>
+                      <th>Admin Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminLeadsTableBody">
+                    <tr><td colspan="7" class="table-loading">Loading network leads...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 4: TELEPHONY & MACRODROID -->
+          <div class="admin-tab-content hidden" id="adminPanelTelephony">
+            <!-- Device Status Grid -->
+            <div class="telephony-devices-grid">
+              <div class="device-card">
+                <div class="device-header">
+                  <span class="device-badge active">● SYNC ACTIVE</span>
+                  <span class="device-model">Samsung Galaxy A04e</span>
                 </div>
-                <div class="info-item full-width">
-                  <span class="info-label">Surgery Requirement & Details</span>
-                  <span class="info-val" id="profileSurgeryDetails">None required</span>
+                <div class="device-meta-row">
+                  <span class="device-meta-label">Storage Path:</span>
+                  <code>Internal storage/Recordings/Call</code>
                 </div>
-                <div class="info-item full-width">
-                  <span class="info-label">Inquiry Message</span>
-                  <span class="info-val" id="profileMessage">--</span>
+                <div class="device-meta-row">
+                  <span class="device-meta-label">Mapped Network:</span>
+                  <span class="tenant-pill all">All 3 Branches Active</span>
                 </div>
+                <div class="device-meta-row">
+                  <span class="device-meta-label">Webhook Endpoint:</span>
+                  <code>/telephony/mobile-sync/call-log</code>
+                </div>
+              </div>
+
+              <div class="device-card">
+                <div class="device-header">
+                  <span class="device-badge live">● REALTIME GATEWAY</span>
+                  <span class="device-model">MacroDroid Cloud Webhook</span>
+                </div>
+                <p style="font-size: 13px; color: #475569; margin: 8px 0 12px;">Triggered on every incoming & outgoing call termination. Uploads MP3/AMR audio directly to Supabase Storage bucket.</p>
+                <button class="btn-demo-pill" id="btnTestMacroDroidWebhook" style="padding: 8px 12px; font-size: 12px; background: #0f766e; color: white;">
+                  ⚡ Send Test Call Webhook
+                </button>
               </div>
             </div>
 
-            <!-- Section 3: Telephony & Call Details -->
-            <div class="profile-sub-section">
-              <span class="sub-section-title">Call & Executive Assignment</span>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Lead Source</span>
-                  <span class="info-val" id="profileSource">--</span>
+            <!-- Recorded Calls Table -->
+            <div class="content-card" style="margin-top: 1.5rem;">
+              <div class="section-heading-teal">
+                <span class="teal-bar"></span>
+                <h2>Network Call Recordings Audit</h2>
+              </div>
+              <div class="table-responsive">
+                <table class="hummatic-table">
+                  <thead>
+                    <tr>
+                      <th>Call Timestamp</th>
+                      <th>Caller Phone</th>
+                      <th>Direction</th>
+                      <th>Branch</th>
+                      <th>Duration</th>
+                      <th>Linked Patient</th>
+                      <th>Playback</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminCallsTableBody">
+                    <tr><td colspan="7" class="table-loading">Loading call logs...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 5: BRANCH CONFIGURATION -->
+          <div class="admin-tab-content hidden" id="adminPanelSettings">
+            <div class="branch-config-grid">
+              <!-- SSM Hospital Profile -->
+              <div class="branch-settings-card">
+                <div class="branch-settings-header">
+                  <img src="/ssm-logo.png" alt="SSM Logo" style="height: 32px;" />
+                  <h3>SSM Hospital (SSM)</h3>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Destination (SIM) Number</span>
-                  <span class="info-val" id="profileDestNumber">--</span>
+                <div class="branch-form-fields">
+                  <div class="form-group">
+                    <label>Official Helpline</label>
+                    <input type="text" class="hummatic-input" value="+91 94480 00000" id="cfgSsmPhone" />
+                  </div>
+                  <div class="form-group">
+                    <label>Branch Address</label>
+                    <input type="text" class="hummatic-input" value="Hassan-Mysore Highway, Karnataka" id="cfgSsmAddr" />
+                  </div>
+                  <div class="form-group">
+                    <label>Specialization Scope</label>
+                    <input type="text" class="hummatic-input" value="Gynecology, Obstetrics & Primary Fertility" id="cfgSsmScope" />
+                  </div>
+                  <button type="button" class="btn-teal-submit btn-sm" id="btnSaveSsmCfg">Save SSM Settings</button>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Next Scheduled Callback</span>
-                  <span class="info-val highlight-callback" id="profileFollowup">--</span>
+              </div>
+
+              <!-- Santasa Hassan Profile -->
+              <div class="branch-settings-card">
+                <div class="branch-settings-header">
+                  <img src="/santasa-logo.png" alt="Santasa Logo" style="height: 32px;" />
+                  <h3>Santasa Hassan Hospital (SHH)</h3>
                 </div>
-                <div class="info-item">
-                  <span class="info-label">Assigned Executive</span>
-                  <span class="info-val" id="profileExecutive">--</span>
+                <div class="branch-form-fields">
+                  <div class="form-group">
+                    <label>Official Helpline</label>
+                    <input type="text" class="hummatic-input" value="+91 94482 22222" id="cfgShhPhone" />
+                  </div>
+                  <div class="form-group">
+                    <label>Branch Address</label>
+                    <input type="text" class="hummatic-input" value="MG Road, Hassan, Karnataka - 573201" id="cfgShhAddr" />
+                  </div>
+                  <div class="form-group">
+                    <label>Specialization Scope</label>
+                    <input type="text" class="hummatic-input" value="Advanced IVF, ICSI, IUI & Laparoscopy" id="cfgShhScope" />
+                  </div>
+                  <button type="button" class="btn-teal-submit btn-sm" id="btnSaveShhCfg">Save Hassan Settings</button>
+                </div>
+              </div>
+
+              <!-- Santasa Mysore Profile -->
+              <div class="branch-settings-card">
+                <div class="branch-settings-header">
+                  <img src="/santasa-logo.png" alt="Santasa Logo" style="height: 32px;" />
+                  <h3>Santasa Mysore Hospital (SMH)</h3>
+                </div>
+                <div class="branch-form-fields">
+                  <div class="form-group">
+                    <label>Official Helpline</label>
+                    <input type="text" class="hummatic-input" value="+91 94483 33333" id="cfgSmhPhone" />
+                  </div>
+                  <div class="form-group">
+                    <label>Branch Address</label>
+                    <input type="text" class="hummatic-input" value="Jayalakshmipuram, Mysore, Karnataka - 570012" id="cfgSmhAddr" />
+                  </div>
+                  <div class="form-group">
+                    <label>Specialization Scope</label>
+                    <input type="text" class="hummatic-input" value="Embryology, Genetics, Cryopreservation & IVF" id="cfgSmhScope" />
+                  </div>
+                  <button type="button" class="btn-teal-submit btn-sm" id="btnSaveSmhCfg">Save Mysore Settings</button>
                 </div>
               </div>
             </div>
-
-            <div class="patient-notes-block">
-              <span class="info-label">Executive Clinical Remarks</span>
-              <div class="notes-content" id="profileNotes">No remarks logged.</div>
-            </div>
           </div>
 
-          <div class="detail-card timeline-card-wrapper">
-            <div class="timeline-header-row">
-              <h3>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Activity Timeline & Call Recordings
-              </h3>
-              <span class="timeline-sub-tag">Live Chronological Audit Feed</span>
-            </div>
-
-            <!-- Quick Clinical Note Composer Bar -->
-            <div class="quick-note-composer-bar">
-              <input type="text" id="quickTimelineNoteInput" class="quick-note-input" placeholder="Type quick clinical note (e.g. 'Patient scheduled for semen analysis test') and press Enter..." />
-              <button class="btn btn-sm btn-primary" id="quickTimelineNoteBtn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                <span>Add Note</span>
-              </button>
-            </div>
-            
-            <div class="timeline-feed" id="timelineFeed">
-              <div class="empty-state">Select a lead to inspect medical interaction timeline.</div>
-            </div>
-          </div>
         </div>
-      </main>
+      </section>
+
+    </main>
+
+    <!-- Floating Bottom-Right Red Notification Bell (from screenshot) -->
+    <div class="floating-notification-bell" id="floatingNotificationBell" title="Call Notifications">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+      <span class="notification-count-badge" id="floatingBellBadge">0</span>
+    </div>
+
+  </div> <!-- /#app -->
+
+  <!-- ================================================================ -->
+  <!-- ACTION MODAL: Quick Actions Drawer for Lead Row (...) -->
+  <!-- ================================================================ -->
+  <div id="leadActionDrawerModal" class="modal-overlay hidden">
+    <div class="modal-card action-drawer-card">
+      <div class="modal-header-teal">
+        <h3 id="drawerLeadName">Patient Actions</h3>
+        <button class="modal-close" data-close="leadActionDrawerModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="drawer-phone-row">
+          <span class="drawer-phone" id="drawerLeadPhone">+91 ...</span>
+          <span class="drawer-status-badge" id="drawerLeadStatus">Valid - Followup</span>
+        </div>
+
+        <!-- Audio Player Section if recording exists -->
+        <div class="drawer-audio-section hidden" id="drawerAudioSection">
+          <label class="audio-label">Call Recording Playback:</label>
+          <audio id="drawerAudioPlayer" controls style="width: 100%; margin-top: 6px;"></audio>
+        </div>
+
+        <div class="drawer-actions-grid">
+          <button class="drawer-action-btn btn-call" id="drawerCallBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <span>Dial Call</span>
+          </button>
+          <button class="drawer-action-btn btn-whatsapp" id="drawerWhatsAppBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <span>WhatsApp</span>
+          </button>
+          <button class="drawer-action-btn btn-note" id="drawerAddNoteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Add Note</span>
+          </button>
+          <button class="drawer-action-btn btn-followup" id="drawerFollowupBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Follow-up</span>
+          </button>
+          <button class="drawer-action-btn btn-appt" id="drawerBookApptBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Consultation</span>
+          </button>
+          <button class="drawer-action-btn btn-outcome" id="drawerRecordOutcomeBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Outcome</span>
+          </button>
+          <button class="drawer-action-btn btn-edit-lead" id="drawerEditLeadBtn" style="grid-column: 1 / -1; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; justify-content: center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Edit Full Lead Profile</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close="leadActionDrawerModal">Close</button>
+      </div>
     </div>
   </div>
 
-  <!-- FLOATING EXECUTIVE AUTO-REMINDER ALERT -->
-  <div id="executiveReminderBanner" class="executive-reminder-banner hidden">
-    <div class="reminder-pulse-icon">⏰</div>
-    <div class="reminder-content">
-      <div class="reminder-header">
-        <strong class="reminder-title">Callback Due Now</strong>
-        <span class="reminder-time" id="reminderDueTime">Just now</span>
-      </div>
-      <div class="reminder-patient" id="reminderPatientText">Patient: Pooja Sharma (+919876543210)</div>
-      <div class="reminder-note" id="reminderNoteText">Discuss IUI consultation charges & schedule appointment.</div>
-      <div class="reminder-actions">
-        <button class="action-btn btn-call btn-sm" id="reminderCallNowBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <span>Call Now</span>
-        </button>
-        <button class="action-btn btn-whatsapp btn-sm" id="reminderWhatsappBtn">
-          <span>WhatsApp</span>
-        </button>
-        <button class="action-btn btn-action-outline btn-sm" id="reminderSnoozeBtn">
-          <span>Snooze 15m</span>
-        </button>
-        <button class="btn-ghost" id="reminderDismissBtn" title="Dismiss Alert">✕</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Comprehensive Hospital Lead Creation -->
-  <div id="newLeadModal" class="modal-overlay hidden">
-    <div class="modal-card modal-card-lg">
-      <div class="modal-header">
-        <div>
-          <h3>Create New Patient Lead</h3>
-          <p class="modal-subtitle">Fill up the below fields to create a new lead. * are mandatory fields.</p>
-        </div>
-        <button class="modal-close" data-close="newLeadModal">✕</button>
-      </div>
-      <form id="newLeadForm" class="modal-body-scrollable">
-        <!-- Section: General Information -->
-        <div class="form-section-header">General Information</div>
-        <div class="form-row-grid">
-          <div class="form-group">
-            <label>Inquiry Date *</label>
-            <input type="datetime-local" id="inputInquiryDate" required />
-          </div>
-          <div class="form-group">
-            <label>Patient Name *</label>
-            <input type="text" id="inputPatientName" required placeholder="Full patient name" />
-          </div>
-          <div class="form-group">
-            <label>Contact Number (+91) *</label>
-            <input type="tel" id="inputPrimaryPhone" required placeholder="e.g. +91 98765 43210" />
-          </div>
-          <div class="form-group">
-            <label>Registered Number (Alternate)</label>
-            <input type="tel" id="inputRegisteredPhone" placeholder="Alternate contact number" />
-          </div>
-          <div class="form-group">
-            <label>Email ID</label>
-            <input type="email" id="inputEmail" placeholder="patient@example.com" />
-          </div>
-          <div class="form-group">
-            <label>Patient Type</label>
-            <select id="inputPatientType">
-              <option value="Enquiry" selected>Enquiry</option>
-              <option value="New Patient">New Patient</option>
-              <option value="Existing Patient">Existing Patient</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Patient ID (MRN)</label>
-            <input type="text" id="inputPatientId" placeholder="e.g. SNT-2026-0042" />
-          </div>
-          <div class="form-group">
-            <label>Treatment / Package</label>
-            <input type="text" id="inputTreatment" placeholder="e.g. IVF Cycle, IUI, Laparoscopy, ICSI" />
-          </div>
-        </div>
-
-        <div class="form-group full-width">
-          <label>Inquiry Message</label>
-          <textarea id="inputMessage" rows="2" placeholder="Specific patient query or inquiry details..."></textarea>
-        </div>
-
-        <!-- Section: Source & Hospital Status -->
-        <div class="form-section-header">Channel Source & Lead Status</div>
-        <div class="form-row-grid">
-          <div class="form-group">
-            <label>Lead Source</label>
-            <select id="inputLeadSource">
-              <option value="Mobile Call Direct" selected>Mobile Call Direct</option>
-              <option value="IVR Call">IVR Call</option>
-              <option value="Chatbot - Website">Chatbot - Website</option>
-              <option value="Website - Contact Us">Website - Contact Us</option>
-              <option value="Website - Home">Website - Home</option>
-              <option value="Website - Book Appointment">Website - Book Appointment</option>
-              <option value="Website - Fertility & IVF">Website - Fertility & IVF</option>
-              <option value="Website - Laparoscopy">Website - Laparoscopy</option>
-              <option value="Website - Cardiology (Heart Care)">Website - Cardiology (Heart Care)</option>
-              <option value="Website - Orthopaedics">Website - Orthopaedics</option>
-              <option value="Website - Neonatology">Website - Neonatology</option>
-              <option value="Walk-in">Walk-in</option>
-              <option value="Referral">Referral</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Lead Status *</label>
-            <select id="inputLeadStatus" required>
-              <optgroup label="✅ Valid Leads">
-                <option value="Valid - Need Appointment" selected>Valid - Need Appointment</option>
-                <option value="Valid - Consultation done">Valid - Consultation done</option>
-                <option value="Valid - Followup">Valid - Followup</option>
-                <option value="Valid - Surgery requirement">Valid - Surgery requirement</option>
-                <option value="Valid - Surgery done">Valid - Surgery done</option>
-                <option value="Valid - Surgery Enquiry">Valid - Surgery Enquiry</option>
-                <option value="Valid - Dropped pricing issue">Valid - Dropped pricing issue</option>
-                <option value="Valid - Dropped location issue">Valid - Dropped location issue</option>
-                <option value="Valid - Lost to compitition">Valid - Lost to compitition</option>
-                <option value="Valid - Patient not willing now">Valid - Patient not willing now</option>
-              </optgroup>
-              <optgroup label="📋 Enquiries & Admin">
-                <option value="Enquiry - Insurance">Enquiry - Insurance</option>
-                <option value="Enquiry - Job Enquiry">Enquiry - Job Enquiry</option>
-                <option value="Enquiry - Other">Enquiry - Other</option>
-                <option value="Complaint">Complaint</option>
-                <option value="Medical Reps">Medical Reps</option>
-              </optgroup>
-              <optgroup label="⚠️ Invalid / Ringing">
-                <option value="Ringing no response">Ringing no response</option>
-                <option value="Invalid - No response">Invalid - No response</option>
-                <option value="Invalid - Did not enquire">Invalid - Did not enquire</option>
-                <option value="Invalid - Out of network coverage">Invalid - Out of network coverage</option>
-                <option value="Invalid - Switched off">Invalid - Switched off</option>
-                <option value="Invalid - Wrong number">Invalid - Wrong number</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Location / City</label>
-            <input type="text" id="inputCity" value="Hassan" placeholder="e.g. Hassan, Mysore" />
-          </div>
-          <div class="form-group">
-            <label>Priority</label>
-            <select id="inputPriority">
-              <option value="High" selected>High Priority</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Section: Clinical Dates & Surgery Details -->
-        <div class="form-section-header">Consultation & Surgery Planning</div>
-        <div class="form-row-grid">
-          <div class="form-group">
-            <label>Consultation Date</label>
-            <input type="date" id="inputConsultationDate" />
-          </div>
-          <div class="form-group">
-            <label>Surgery / Procedure Date</label>
-            <input type="date" id="inputSurgeryDate" />
-          </div>
-          <div class="form-group">
-            <label>Surgery Requirement</label>
-            <input type="text" id="inputSurgeryRequirement" placeholder="e.g. Laparoscopic Ovarian Drilling, ICSI" />
-          </div>
-          <div class="form-group">
-            <label>Destination (Hospital SIM) Number</label>
-            <input type="text" id="inputDestNumber" placeholder="e.g. +91 80471 90001" />
-          </div>
-        </div>
-
-        <div class="form-group full-width">
-          <label>Surgery / Procedure Details</label>
-          <textarea id="inputSurgeryDetails" rows="2" placeholder="Clinical notes on surgical procedure, anesthesia, or package requirements..."></textarea>
-        </div>
-
-        <div class="form-group full-width">
-          <label>Executive Clinical Remarks</label>
-          <textarea id="inputNotes" rows="2" placeholder="Executive notes, patient history, caller background..."></textarea>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="newLeadModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create Patient Lead</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Schedule Follow-up / Callback Reminder -->
-  <div id="followupModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Schedule Patient Callback Reminder</h3>
-        <button class="modal-close" data-close="followupModal">✕</button>
-      </div>
-      <form id="followupForm" class="modal-body">
-        <div class="form-group">
-          <label>Callback Date & Time *</label>
-          <input type="datetime-local" id="inputFollowupDate" required />
-        </div>
-        <div class="form-group">
-          <label>Reminder Objective / Notes *</label>
-          <textarea id="inputFollowupNote" rows="3" required placeholder="e.g. Call patient to discuss test results, IUI procedure costs, and confirm doctor slot..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="followupModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Set Reminder & Schedule</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Book Doctor Appointment -->
-  <div id="apptModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Book Clinic Consultation</h3>
-        <button class="modal-close" data-close="apptModal">✕</button>
-      </div>
-      <form id="apptForm" class="modal-body">
-        <div class="form-group">
-          <label>Doctor / Specialist *</label>
-          <select id="inputDoctor">
-            <option value="Dr. Soumya (Fertility Specialist)" selected>Dr. Soumya (Fertility Specialist)</option>
-            <option value="Dr. Anil Kumar (Andrologist)">Dr. Anil Kumar (Andrologist)</option>
-            <option value="Dr. Rekha (Gynecologist)">Dr. Rekha (Gynecologist)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Hospital Branch *</label>
-          <select id="inputApptBranch">
-            <option value="Hassan Main Hospital" selected>Hassan Main Hospital</option>
-            <option value="Mysore Center">Mysore Center</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Appointment Date & Time *</label>
-          <input type="datetime-local" id="inputApptDate" required />
-        </div>
-        <div class="form-group">
-          <label>Appointment Type</label>
-          <select id="inputApptType">
-            <option value="In-Person Consultation" selected>In-Person Consultation</option>
-            <option value="Ultrasound & Scan">Ultrasound & Scan</option>
-            <option value="Semen Analysis">Semen Analysis</option>
-            <option value="IVF Protocol Counseling">IVF Protocol Counseling</option>
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-close="apptModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Confirm Appointment</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: Add Consultation Note -->
+  <!-- MODAL: Note -->
   <div id="noteModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <div class="modal-header">
+      <div class="modal-header-teal">
         <h3>Add Clinical Consultation Note</h3>
         <button class="modal-close" data-close="noteModal">✕</button>
       </div>
       <form id="noteForm" class="modal-body">
         <div class="form-group">
           <label>Interaction Summary / Medical Findings *</label>
-          <textarea id="inputNoteText" rows="4" required placeholder="Patient discussed prior IVF attempts, semen analysis prescribed, requested brochure..."></textarea>
+          <textarea id="inputNoteText" rows="4" required class="hummatic-textarea" placeholder="Patient discussed prior IVF attempts, semen analysis prescribed, requested brochure..."></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close="noteModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save to Timeline</button>
+          <button type="submit" class="btn-teal-submit">Save Note</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: Lead Outcome / Funnel Progression -->
+  <!-- MODAL: Follow-up -->
+  <div id="followupModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header-teal">
+        <h3>Schedule Patient Follow-up</h3>
+        <button class="modal-close" data-close="followupModal">✕</button>
+      </div>
+      <form id="followupForm" class="modal-body">
+        <div class="form-group">
+          <label>Due Date & Time *</label>
+          <input type="datetime-local" id="inputFollowupDate" class="hummatic-input" required />
+        </div>
+        <div class="form-group">
+          <label>Follow-up Action *</label>
+          <select id="inputFollowupType" class="hummatic-select">
+            <option value="Phone Call" selected>📞 Phone Call</option>
+            <option value="WhatsApp">💬 WhatsApp Message</option>
+            <option value="Clinic Visit">🏥 Clinic Visit Reminder</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Follow-up Notes</label>
+          <textarea id="inputFollowupNotes" rows="3" class="hummatic-textarea" placeholder="Discuss report results and schedule doctor consultation..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="followupModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit">Schedule Follow-up</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Consultation Appointment -->
+  <div id="apptModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header-teal">
+        <h3>Book Doctor Consultation Appointment</h3>
+        <button class="modal-close" data-close="apptModal">✕</button>
+      </div>
+      <form id="apptForm" class="modal-body">
+        <div class="form-group">
+          <label>Appointment Date & Time *</label>
+          <input type="datetime-local" id="inputApptDate" class="hummatic-input" required />
+        </div>
+        <div class="form-group">
+          <label>Doctor / Specialist *</label>
+          <select id="inputApptDoctor" class="hummatic-select">
+            <option value="Dr. Sowmya Dinesh (Senior Reproductive Medicine Specialist)">Dr. Sowmya Dinesh (IVF Specialist)</option>
+            <option value="Dr. Specialist (Gynecologist)">Consultant Gynecologist</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Specialist Notes</label>
+          <textarea id="inputApptNotes" rows="3" class="hummatic-textarea" placeholder="Initial fertility evaluation and ultrasound scanning..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close="apptModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit">Confirm Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Lead Outcome -->
   <div id="outcomeModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <div class="modal-header">
+      <div class="modal-header-teal">
         <h3>Record Lead Outcome & Stage</h3>
         <button class="modal-close" data-close="outcomeModal">✕</button>
       </div>
       <form id="outcomeForm" class="modal-body">
         <div class="form-group">
           <label>Updated Lead Status *</label>
-          <select id="inputOutcomeStatus">
-            <option value="Converted (Under Treatment)">🏆 Converted (Under Treatment)</option>
-            <option value="Appointment Scheduled">📅 Appointment Scheduled</option>
-            <option value="Follow-up Needed" selected>⏳ Follow-up Needed</option>
-            <option value="Not Interested / Lost">❌ Not Interested / Lost</option>
+          <select id="inputOutcomeStatus" class="hummatic-select">
+            <option value="Valid - Consultation done">Valid - Consultation done</option>
+            <option value="Valid - Surgery done">Valid - Surgery done</option>
+            <option value="Valid - Followup" selected>Valid - Followup</option>
+            <option value="Converted">Converted (Under Treatment)</option>
+            <option value="Invalid - Wrong number">Invalid - Wrong number</option>
           </select>
         </div>
         <div class="form-group" id="treatmentRevenueGroup">
           <label>Estimated Treatment Value (₹ INR)</label>
-          <input type="number" id="inputRevenue" placeholder="e.g. 150000 for IVF Cycle" />
+          <input type="number" id="inputRevenue" class="hummatic-input" placeholder="e.g. 150000 for IVF Cycle" />
         </div>
         <div class="form-group">
           <label>Outcome Remarks</label>
-          <textarea id="inputOutcomeNotes" rows="3" placeholder="Patient agreed to begin stimulation protocol next cycle..."></textarea>
+          <textarea id="inputOutcomeNotes" rows="3" class="hummatic-textarea" placeholder="Patient agreed to begin stimulation protocol next cycle..."></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-close="outcomeModal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Record Outcome</button>
+          <button type="submit" class="btn-teal-submit">Record Outcome</button>
         </div>
       </form>
     </div>
@@ -752,105 +1547,341 @@
   <!-- MODAL: Live Call Telephony Overlay -->
   <div id="liveCallModal" class="modal-overlay hidden">
     <div class="modal-card" style="text-align: center; padding: 2rem; max-width: 380px;">
-      <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--brand-purple-100); color: var(--brand-purple); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; animation: pulse-pink 1.5s infinite;">
+      <div class="call-pulse-avatar">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       </div>
-      <h3 id="callPatientName" style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">Calling Patient...</h3>
-      <p id="callPatientPhone" style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-purple); margin: 6px 0 12px;">+91 0000000000</p>
-      <div id="callTimer" style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 800; color: var(--brand-pink); margin-bottom: 1rem;">00:00</div>
-      <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger-600); margin-right: 4px;"></span> Automatic Recording & MacroDroid Sync Active
+      <h3 id="callPatientName" style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">Calling Patient...</h3>
+      <p id="callPatientPhone" style="font-family: var(--font-mono); font-weight: 700; color: #2ea892; margin: 6px 0 12px;">+91 0000000000</p>
+      <div id="callTimer" style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 800; color: #e11d48; margin-bottom: 1rem;">00:00</div>
+      <div style="font-size: 0.76rem; color: #64748b; margin-bottom: 1.5rem;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626; margin-right: 4px;"></span> Automatic Recording & MacroDroid Sync Active
       </div>
       <div>
-        <button class="btn btn-primary" id="endCallBtn" style="background: var(--danger-600); width: 100%; padding: 0.75rem;">
+        <button class="btn btn-primary" id="endCallBtn" style="background: #dc2626; width: 100%; padding: 0.75rem;">
           End Call & Save Recording
         </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Performance & Funnel Analytics Dashboard -->
-  <div id="reportsModal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 680px;">
-      <div class="modal-header" style="background: var(--brand-purple); color: #fff;">
-        <h3 style="color: #fff;">Hospital Lead Conversion & Revenue Analytics</h3>
-        <button class="modal-close" data-close="reportsModal" style="color: #fff;">✕</button>
+  <!-- ACTION MODAL: WhatsApp Reminder & Updates -->
+  <div id="whatsappReminderModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #128c7e 0%, #25d366 100%); color: white; border-radius: 12px 12px 0 0; padding: 1.2rem 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <h3 class="modal-title" style="color: white; font-size: 1.15rem; margin: 0;">Send WhatsApp Reminder / Update</h3>
+        </div>
+        <button class="modal-close-btn" data-close="whatsappReminderModal" style="color: white; opacity: 0.85;">&times;</button>
       </div>
-      <div class="modal-body" style="gap: 1.25rem;">
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
-            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Revenue</span>
-            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-purple); margin: 4px 0;" id="statTotalRevenue">₹0</strong>
-            <span style="font-size: 0.7rem; color: var(--text-secondary);">From Converted IVF Treatments</span>
+      <form id="whatsappReminderForm" class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <input type="hidden" id="waLeadId" />
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 13px;">Patient Name</label>
+            <input type="text" id="waPatientName" class="hummatic-input" readonly style="background: #f8fafc;" />
           </div>
-          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
-            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Patient Conversions</span>
-            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-pink); margin: 4px 0;" id="statTotalConversions">0</strong>
-            <span style="font-size: 0.7rem; color: var(--text-secondary);">Completed Procedures</span>
-          </div>
-          <div style="background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
-            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Conversion Rate</span>
-            <strong style="display: block; font-size: 1.4rem; font-weight: 800; color: var(--brand-teal-dark); margin: 4px 0;" id="statConversionRate">0%</strong>
-            <span style="font-size: 0.7rem; color: var(--text-secondary);">Inquiry to Treatment</span>
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 13px;">Phone Number</label>
+            <input type="text" id="waPatientPhone" class="hummatic-input" readonly style="background: #f8fafc;" />
           </div>
         </div>
 
-        <div>
-          <h4 style="font-size: 0.92rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;">Patient Lead Lifecycle Funnel</h4>
-          <div id="funnelStagesList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <div class="form-group">
+          <label style="font-weight: 600; font-size: 13px;">Reminder / Update Type</label>
+          <select id="waTemplateType" class="hummatic-select">
+            <option value="update">📝 Lead Status & Consultation Update</option>
+            <option value="appointment">📅 Appointment / Consultation Reminder</option>
+            <option value="followup">📞 Follow-up Call Reminder</option>
+            <option value="review">⭐ Review & Post-Care Check</option>
+            <option value="surgery">🏥 Surgery & Procedure Reminder</option>
+            <option value="custom">💬 Custom Message</option>
+          </select>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-close="reportsModal">Close</button>
-      </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-weight: 600; font-size: 13px;">Prefilled Message</label>
+            <button type="button" id="btnResetWaMessage" style="background: none; border: none; color: #128c7e; font-size: 12px; cursor: pointer; text-decoration: underline; font-weight: 500;">Reset to Template</button>
+          </div>
+          <textarea id="waMessagePreview" rows="6" class="hummatic-textarea" style="font-family: inherit; font-size: 13px; line-height: 1.5;" placeholder="Enter message text..."></textarea>
+          <span style="font-size: 11.5px; color: #64748b; margin-top: 4px;">Clicking send opens WhatsApp Web or App directly with this patient's chat.</span>
+        </div>
+
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn-grey-cancel" data-close="whatsappReminderModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit" id="btnSendWhatsAppModal" style="background: #25d366; border-color: #25d366; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: white;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            <span>Open & Send on WhatsApp</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <!-- GATEWAY: Executive Authentication Screen -->
-  <div id="loginModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 440px; box-shadow: var(--shadow-overlay); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-subtle);">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--brand-purple), var(--brand-purple-dark)); color: #fff; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <img src="./santasa-logo.png" alt="Santasa IVF Logo" style="height: 52px; width: auto; background: #ffffff; padding: 6px 14px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
-        <div>
-          <h3 style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;">Santasa IVF & Hospital</h3>
-          <span style="font-size: 0.8rem; color: var(--brand-pink-light); font-weight: 600;">Executive Patient Lead Workspace</span>
-        </div>
+  <!-- ACTION MODAL: Schedule Call (Matching Reference Schedule Call Button) -->
+  <div id="scheduleCallModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Schedule Patient Call</h3>
+        <button class="modal-close-btn" data-close="scheduleCallModal">&times;</button>
       </div>
-      <form id="loginForm" class="modal-body" style="padding: 1.5rem; gap: 1.1rem; background: #ffffff;">
-        <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45;">
-          Sign in with your registered hospital credentials to access patient leads and real-time call sync.
+      <form id="scheduleCallForm" class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label>Patient Name</label>
+          <input type="text" id="scheduleCallPatientName" class="hummatic-input" readonly disabled />
         </div>
         <div class="form-group">
-          <label>Email Address *</label>
-          <input type="email" id="loginEmailInput" required placeholder="executive@santasa.com" autocomplete="username" />
+          <label>Phone Number</label>
+          <input type="text" id="scheduleCallPhone" class="hummatic-input" readonly disabled />
         </div>
         <div class="form-group">
-          <label>Password *</label>
-          <input type="password" id="loginPasswordInput" required placeholder="••••••••••••" autocomplete="current-password" />
+          <label>Scheduled Date & Time *</label>
+          <input type="datetime-local" id="scheduleCallDateTime" class="hummatic-input" required />
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-          <button type="button" class="btn btn-sm btn-secondary" id="fillExecutiveDemoBtn" style="font-size: 11px; padding: 4px 8px;">
-            👤 Auto-fill Executive
-          </button>
-          <button type="button" class="btn btn-sm btn-outline" id="fillAdminDemoBtn" style="font-size: 11px; padding: 4px 8px;">
-            👑 Auto-fill Admin
-          </button>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="scheduleCallPriority" class="hummatic-select">
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Urgent">Urgent</option>
+            <option value="Low">Low</option>
+          </select>
         </div>
-        <div style="border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 6px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">API Server Endpoint</label>
-            <button type="button" id="toggleApiSettingsBtn" style="background: none; border: none; font-size: 0.72rem; color: var(--brand-purple); cursor: pointer; text-decoration: underline; font-weight: 700;">Configure</button>
+        <div class="form-group">
+          <label>Call Purpose / Notes</label>
+          <textarea id="scheduleCallNotes" rows="3" class="hummatic-textarea" placeholder="e.g. Follow-up on consultation, review lab results..."></textarea>
+        </div>
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn-grey-cancel" data-close="scheduleCallModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit" id="btnConfirmScheduleCall">Confirm Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL: Add Staff Member -->
+  <div id="adminAddStaffModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header-teal">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <h3>Add Hospital Executive / Staff</h3>
+        </div>
+        <button class="modal-close" data-close="adminAddStaffModal">&times;</button>
+      </div>
+      <form id="adminAddStaffForm" class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="adminStaffFullNameInput" class="hummatic-input" required placeholder="e.g. Dr. Priya Rao / Rajesh Kumar" />
+        </div>
+        <div class="form-group">
+          <label>Work Email Address *</label>
+          <input type="email" id="adminStaffEmailInput" class="hummatic-input" required placeholder="e.g. rajesh@santasa.com" />
+        </div>
+        <div class="form-group">
+          <label>Initial Login Password *</label>
+          <input type="password" id="adminStaffPasswordInput" class="hummatic-input" required value="Executive@2026!" />
+        </div>
+        <div class="form-group">
+          <label>Assigned Hospital Branch *</label>
+          <select id="adminStaffHospitalSelect" class="hummatic-select" required>
+            <option value="SSM">🏥 SSM Hospital (SSM)</option>
+            <option value="SHH">🏥 Santasa Hassan Hospital (SHH)</option>
+            <option value="SMH">🏥 Santasa Mysore Hospital (SMH)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>System Role *</label>
+          <select id="adminStaffRoleSelect" class="hummatic-select" required>
+            <option value="CRM_EXECUTIVE" selected>CRM Executive</option>
+            <option value="HOSPITAL_ADMIN">Hospital Administrator</option>
+            <option value="SUPER_ADMIN">Super Administrator (Network-wide)</option>
+          </select>
+        </div>
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn-grey-cancel" data-close="adminAddStaffModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit" id="btnSubmitAddStaff">Create Staff Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL: Edit Staff Member -->
+  <div id="adminEditStaffModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header-teal">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <h3>Edit Staff Member & Permissions</h3>
+        </div>
+        <button class="modal-close" data-close="adminEditStaffModal">&times;</button>
+      </div>
+      <form id="adminEditStaffForm" class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <input type="hidden" id="adminEditStaffId" />
+        <div class="form-group">
+          <label>Staff Member</label>
+          <input type="text" id="adminEditStaffNameDisplay" class="hummatic-input" readonly style="background: #f8fafc;" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adminEditStaffEmailDisplay" class="hummatic-input" readonly style="background: #f8fafc;" />
+        </div>
+        <div class="form-group">
+          <label>Assigned Hospital Branch *</label>
+          <select id="adminEditStaffHospitalSelect" class="hummatic-select">
+            <option value="SSM">🏥 SSM Hospital (SSM)</option>
+            <option value="SHH">🏥 Santasa Hassan Hospital (SHH)</option>
+            <option value="SMH">🏥 Santasa Mysore Hospital (SMH)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>System Role *</label>
+          <select id="adminEditStaffRoleSelect" class="hummatic-select">
+            <option value="CRM_EXECUTIVE">CRM Executive</option>
+            <option value="HOSPITAL_ADMIN">Hospital Administrator</option>
+            <option value="SUPER_ADMIN">Super Administrator (Network-wide)</option>
+          </select>
+        </div>
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn-grey-cancel" data-close="adminEditStaffModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit" id="btnSubmitEditStaff">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL: Transfer Lead to Another Hospital -->
+  <div id="adminTransferLeadModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header-teal">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+          <h3>Transfer Lead Between Hospital Branches</h3>
+        </div>
+        <button class="modal-close" data-close="adminTransferLeadModal">&times;</button>
+      </div>
+      <form id="adminTransferLeadForm" class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <input type="hidden" id="adminTransferLeadId" />
+        <div class="form-group">
+          <label>Patient Details</label>
+          <input type="text" id="adminTransferLeadPatientDisplay" class="hummatic-input" readonly style="background: #f8fafc;" />
+        </div>
+        <div class="form-group">
+          <label>Current Hospital Branch</label>
+          <input type="text" id="adminTransferLeadCurrentBranchDisplay" class="hummatic-input" readonly style="background: #f8fafc;" />
+        </div>
+        <div class="form-group">
+          <label>Target Destination Hospital *</label>
+          <select id="adminTransferTargetHospitalSelect" class="hummatic-select" required>
+            <option value="SSM">🏥 SSM Hospital (SSM Branch)</option>
+            <option value="SHH">🏥 Santasa Hassan Hospital (SHH Branch)</option>
+            <option value="SMH">🏥 Santasa Mysore Hospital (SMH Branch)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reason for Transfer / Clinical Notes *</label>
+          <textarea id="adminTransferReasonInput" class="hummatic-textarea" rows="3" required placeholder="e.g. Patient resides in Mysore; transferred for advanced embryology and ICSI workup."></textarea>
+        </div>
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn-grey-cancel" data-close="adminTransferLeadModal">Cancel</button>
+          <button type="submit" class="btn-teal-submit" id="btnSubmitTransferLead">Confirm Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- GATEWAY: Multi-Hospital Authentication Portal -->
+  <div id="loginModal" class="modal-overlay login-modal-overlay">
+    <div class="modal-card login-modal-card">
+      <div class="login-header-brand">
+        <div class="login-logo-container">
+          <img id="loginLogoImg" src="/ssm-logo.png" alt="Hospital Logo" class="login-logo-img" />
+        </div>
+        <h3 class="login-title">Hospital Executive CRM Portal</h3>
+        <p class="login-subtitle">Multi-Tenant Patient Care & Telephony Gateway</p>
+      </div>
+
+      <!-- Realtime Error / Alert Banner -->
+      <div id="loginAlertBox" class="login-alert-box hidden" role="alert">
+        <svg class="alert-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span id="loginAlertMsg">Invalid credentials</span>
+      </div>
+
+      <form id="loginForm" class="modal-body login-form-body">
+        <div class="form-group">
+          <label for="loginHospitalSelect">Hospital Branch Tenant *</label>
+          <div class="select-with-icon-wrapper">
+            <select id="loginHospitalSelect" class="hummatic-select">
+              <option value="ssm@hospital.com" selected>🏥 SSM Hospital (SSM Branch)</option>
+              <option value="executive@santasa.com">🏥 Santasa Hassan Hospital (SHH Branch)</option>
+              <option value="mysore@santasa.com">🏥 Santasa Mysore Hospital (SMH Branch)</option>
+              <option value="admin@santasa.com">👑 Super Administrator (All Hospitals)</option>
+            </select>
           </div>
-          <div id="apiSettingsContainer" style="display: none; margin-top: 6px;">
-            <input type="text" id="customApiUrlInput" placeholder="https://santasa-crm.onrender.com/api/v1" style="font-size: 0.78rem; padding: 6px 10px; width: 100%; border: 1px solid var(--border-medium); border-radius: 6px;" />
-            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">Paste Render API URL or leave default</div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginEmailInput">Email Address *</label>
+          <div class="input-with-icon-wrapper">
+            <input type="email" id="loginEmailInput" class="hummatic-input" required placeholder="executive@hospital.com" autocomplete="username" />
           </div>
         </div>
-        <div class="modal-footer" style="padding: 0; background: transparent; border: none; margin-top: 0.6rem;">
-          <button type="submit" class="btn btn-primary" id="submitLoginBtn" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(104, 51, 129, 0.3);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Sign In to Workspace
+
+        <div class="form-group">
+          <label for="loginPasswordInput">Password *</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="loginPasswordInput" class="hummatic-input" required placeholder="••••••••••••" autocomplete="current-password" />
+            <button type="button" id="toggleLoginPasswordBtn" class="btn-toggle-password" title="Show or hide password" aria-label="Toggle password visibility">
+              <svg class="eye-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg class="eye-hide hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-options-row">
+          <label class="remember-session-label">
+            <input type="checkbox" id="rememberSessionCheck" checked />
+            <span>Keep session active on this device</span>
+          </label>
+        </div>
+
+        <div class="modal-footer" style="padding: 0; background: transparent; border: none; margin-top: 0.25rem;">
+          <button type="submit" class="btn-teal-submit" id="submitLoginBtn" style="width: 100%; padding: 0.8rem; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span class="btn-spinner hidden" id="loginSubmitSpinner"></span>
+            <span id="submitLoginBtnText">Sign In to Hospital CRM</span>
           </button>
+        </div>
+
+        <div class="demo-section-wrapper">
+          <span class="demo-section-label">Quick Sign-In Presets:</span>
+          <div class="demo-buttons-row">
+            <button type="button" class="btn-demo-pill" id="fillExecutiveDemoBtn" title="SSM Hospital">
+              🏥 SSM Exec
+            </button>
+            <button type="button" class="btn-demo-pill" id="fillHassanDemoBtn" title="Santasa Hassan">
+              🏥 Hassan Exec
+            </button>
+            <button type="button" class="btn-demo-pill" id="fillMysoreDemoBtn" title="Santasa Mysore">
+              🏥 Mysore Exec
+            </button>
+            <button type="button" class="btn-demo-pill" id="fillAdminDemoBtn" title="Super Administrator">
+              👑 Admin
+            </button>
+          </div>
+        </div>
+
+        <div class="login-security-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>256-Bit Encrypted Session • Strict Hospital Data Isolation</span>
         </div>
       </form>
     </div>
@@ -859,6 +1890,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script type="module" src="./src/app.js?v=3.0.0"></script>
+  <script type="module" src="./src/app.js?v=4.0.0"></script>
 </body>
 </html>

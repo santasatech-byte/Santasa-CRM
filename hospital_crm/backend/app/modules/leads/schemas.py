@@ -24,6 +24,7 @@ class LeadSummary(BaseModel):
     campaign: Optional[str] = None
     department: str
     service_interested: Optional[str] = None
+    hospital_id: Optional[str] = None
     branch_id: Optional[str] = None
     assigned_executive_id: Optional[str] = None
     lead_status: str
@@ -46,6 +47,16 @@ class LeadSummary(BaseModel):
     surgery_requirement: Optional[str] = None
     surgery_details: Optional[str] = None
     destination_number: Optional[str] = None
+    review_needed: Optional[str] = None
+    review_period: Optional[str] = None
+    next_review_date: Optional[datetime] = None
+    review_details: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
+    lead_url: Optional[str] = None
 
 
 class CreateLeadRequest(BaseModel):
@@ -61,6 +72,7 @@ class CreateLeadRequest(BaseModel):
     campaign: Optional[str] = None
     department: str = "Fertility & IVF"
     service_interested: Optional[str] = None
+    hospital_id: Optional[str] = None
     branch_id: Optional[str] = None
     assigned_executive_id: Optional[str] = None
     lead_status: Optional[str] = "New"
@@ -79,6 +91,16 @@ class CreateLeadRequest(BaseModel):
     surgery_requirement: Optional[str] = None
     surgery_details: Optional[str] = None
     destination_number: Optional[str] = None
+    review_needed: Optional[str] = None
+    review_period: Optional[str] = None
+    next_review_date: Optional[datetime] = None
+    review_details: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
+    lead_url: Optional[str] = None
 
 
 class UpdateLeadRequest(BaseModel):
@@ -92,6 +114,7 @@ class UpdateLeadRequest(BaseModel):
     lead_source: Optional[str] = None
     department: Optional[str] = None
     service_interested: Optional[str] = None
+    hospital_id: Optional[str] = None
     branch_id: Optional[str] = None
     assigned_executive_id: Optional[str] = None
     lead_status: Optional[str] = None
@@ -111,6 +134,16 @@ class UpdateLeadRequest(BaseModel):
     surgery_requirement: Optional[str] = None
     surgery_details: Optional[str] = None
     destination_number: Optional[str] = None
+    review_needed: Optional[str] = None
+    review_period: Optional[str] = None
+    next_review_date: Optional[datetime] = None
+    review_details: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
+    lead_url: Optional[str] = None
 
 
 class LeadSearchRequest(BaseModel):
@@ -162,7 +195,8 @@ class LeadStatusHistorySummary(BaseModel):
 
 
 class AddLeadNoteRequest(BaseModel):
-    note: str = Field(..., min_length=2)
+    note: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class LeadActivitySummary(BaseModel):

@@ -66,6 +66,7 @@ class Lead(BaseModel):
     department: Mapped[str] = mapped_column(String(100), default="Fertility & IVF", index=True, nullable=False)
     service_interested: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
+    hospital_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True)
     branch_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
     assigned_executive_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     
@@ -91,6 +92,16 @@ class Lead(BaseModel):
     surgery_requirement: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     surgery_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     destination_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    review_needed: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    review_period: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    next_review_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    review_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    utm_source: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    utm_medium: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    utm_campaign: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    utm_term: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    utm_content: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    lead_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     branch: Mapped[Optional["Branch"]] = relationship("Branch", foreign_keys=[branch_id])
     assigned_executive: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_executive_id])

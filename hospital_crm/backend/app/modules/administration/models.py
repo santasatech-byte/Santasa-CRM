@@ -4,7 +4,7 @@ Defines User, Role, and Authentication data structures.
 """
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Enum as SQLEnum
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 import enum
 from app.core.database import BaseModel
@@ -34,6 +34,7 @@ class User(BaseModel):
     )
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    hospital_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True)
     branch_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

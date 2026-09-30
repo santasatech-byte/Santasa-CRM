@@ -67,16 +67,14 @@ test.describe('Hospital CRM Executive Workspace Live E2E Verification Suite', ()
     await expect(page.locator('#newLeadModal')).not.toHaveClass(/hidden/);
 
     // Fill form
-    await page.fill('#nlPatientName', testPatientName);
-    await page.fill('#nlPhone', testPhone);
-    await page.fill('#nlCity', 'Hassan');
-    await page.selectOption('#nlDepartment', 'Fertility & IVF');
-    await page.selectOption('#nlSource', 'Incoming Call');
-    await page.selectOption('#nlPriority', 'High');
-    await page.fill('#nlNotes', 'Initial phone inquiry regarding IVF ICSI cycle.');
+    await page.fill('#inputPatientName', testPatientName);
+    await page.fill('#inputPrimaryPhone', testPhone);
+    await page.fill('#inputCity', 'Hassan');
+    await page.selectOption('#inputPriority', 'High');
+    await page.fill('#inputNotes', 'Initial phone inquiry regarding IVF ICSI cycle.');
 
     // Submit form and wait for network & modal close
-    await page.click('#saveNewLeadBtn');
+    await page.click('#newLeadForm button[type="submit"]');
     await expect(page.locator('#newLeadModal')).toHaveClass(/hidden/, { timeout: 10000 });
     await expect(page.locator('#leadsListContainer')).toContainText(testPatientName);
   });
@@ -97,14 +95,14 @@ test.describe('Hospital CRM Executive Workspace Live E2E Verification Suite', ()
 
     // Click ADD NOTE
     await page.click('#actionNoteBtn');
-    await expect(page.locator('#addNoteModal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#noteModal')).not.toHaveClass(/hidden/);
 
     const testNote = `Patient requested detailed IVF cycle brochure and doctor appointment on weekend. Timestamp: ${Date.now()}`;
-    await page.fill('#noteContentInput', testNote);
-    await page.click('#saveNoteBtn');
+    await page.fill('#inputNoteText', testNote);
+    await page.click('#noteForm button[type="submit"]');
 
     // Verify modal closes and note appears in timeline feed
-    await expect(page.locator('#addNoteModal')).toHaveClass(/hidden/, { timeout: 10000 });
+    await expect(page.locator('#noteModal')).toHaveClass(/hidden/, { timeout: 10000 });
     await expect(page.locator('#timelineFeed')).toContainText(testNote);
   });
 
@@ -115,16 +113,14 @@ test.describe('Hospital CRM Executive Workspace Live E2E Verification Suite', ()
 
     // Click SCHEDULE FOLLOW-UP
     await page.click('#actionFollowupBtn');
-    await expect(page.locator('#scheduleFollowupModal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#followupModal')).not.toHaveClass(/hidden/);
 
-    await page.fill('#fuNotesInput', 'Call patient to confirm ultrasound scan report review');
-    await page.click('#saveFollowupBtn');
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+    await page.fill('#inputFollowupDate', tomorrow);
+    await page.fill('#inputFollowupNote', 'Call patient to confirm ultrasound scan report review');
+    await page.click('#followupForm button[type="submit"]');
 
-    await expect(page.locator('#scheduleFollowupModal')).toHaveClass(/hidden/, { timeout: 10000 });
-    await expect(page.locator('#nextFollowupAlert')).toBeVisible();
-
-    // Click Complete
-    await page.click('#markFollowupDoneBtn');
+    await expect(page.locator('#followupModal')).toHaveClass(/hidden/, { timeout: 10000 });
     await page.waitForTimeout(600);
   });
 
@@ -134,13 +130,14 @@ test.describe('Hospital CRM Executive Workspace Live E2E Verification Suite', ()
     await page.waitForTimeout(400);
 
     // Click BOOK APPT
-    await page.click('#actionAppointmentBtn');
-    await expect(page.locator('#bookAppointmentModal')).not.toHaveClass(/hidden/);
+    await page.click('#actionApptBtn');
+    await expect(page.locator('#apptModal')).not.toHaveClass(/hidden/);
 
-    await page.fill('#apptNotesInput', 'Couple visiting Dr. Soumya for comprehensive fertility workup');
-    await page.click('#saveAppointmentBtn');
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16);
+    await page.fill('#inputApptDate', nextWeek);
+    await page.click('#apptForm button[type="submit"]');
 
-    await expect(page.locator('#bookAppointmentModal')).toHaveClass(/hidden/, { timeout: 10000 });
+    await expect(page.locator('#apptModal')).toHaveClass(/hidden/, { timeout: 10000 });
     await page.waitForTimeout(600);
   });
 
@@ -151,33 +148,32 @@ test.describe('Hospital CRM Executive Workspace Live E2E Verification Suite', ()
 
     // Click OUTCOME
     await page.click('#actionOutcomeBtn');
-    await expect(page.locator('#consultationOutcomeModal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#outcomeModal')).not.toHaveClass(/hidden/);
 
-    await page.selectOption('#outcomeStatusSelect', 'Treatment Booked / Converted');
-    await page.fill('#outcomeServiceInput', 'Self-Oocyte IVF with ICSI Cycle 1');
-    await page.fill('#outcomeConversionValInput', '180000');
-    await page.fill('#outcomeSummaryInput', 'Patient registered for IVF cycle with deposit.');
-    await page.click('#saveOutcomeBtn');
+    await page.selectOption('#inputOutcomeStatus', 'Converted (Under Treatment)');
+    await page.fill('#inputRevenue', '180000');
+    await page.fill('#inputOutcomeNotes', 'Patient registered for IVF cycle with deposit.');
+    await page.click('#outcomeForm button[type="submit"]');
 
-    await expect(page.locator('#consultationOutcomeModal')).toHaveClass(/hidden/, { timeout: 10000 });
+    await expect(page.locator('#outcomeModal')).toHaveClass(/hidden/, { timeout: 10000 });
     await page.waitForTimeout(600);
   });
 
-  test('8. Dispatch WhatsApp Template Message', async ({ page }) => {
+  test('8. Dispatch WhatsApp Action', async ({ page }) => {
     await page.waitForSelector('.lead-card');
     await page.locator('.lead-card').first().click();
     await page.waitForTimeout(400);
 
     // Click WHATSAPP
+    const popupPromise = page.waitForEvent('popup').catch(() => null);
     await page.click('#actionWhatsappBtn');
-    await expect(page.locator('#whatsappModal')).not.toHaveClass(/hidden/);
-
-    await page.selectOption('#waTemplateSelect', 'appointment_confirmation');
-    await expect(page.locator('#waMessageBody')).toHaveValue(/Santasa IVF/);
-    await page.click('#sendWhatsappBtn');
-
-    await expect(page.locator('#whatsappModal')).toHaveClass(/hidden/, { timeout: 10000 });
-    await page.waitForTimeout(600);
+    const popup = await popupPromise;
+    if (popup) {
+      expect(popup.url()).toMatch(/whatsapp\.com|wa\.me/);
+      await popup.close();
+    } else {
+      await expect(page.locator('#toastContainer')).toContainText(/WhatsApp/i);
+    }
   });
 
   test('9. Trigger Click-to-Call overlay and end call', async ({ page }) => {

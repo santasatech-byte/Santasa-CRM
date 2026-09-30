@@ -38,7 +38,7 @@ def clean_phone_10(phone: str) -> str:
     return digits[-10:] if len(digits) >= 10 else digits
 
 
-def find_lead_by_phone(db: Session, raw_phone: str) -> Optional[Lead]:
+def find_lead_by_phone(db: Session, raw_phone: str, hospital_id: Optional[str] = None) -> Optional[Lead]:
     """
     Bulletproof phone matcher:
     Matches by 10-digit suffix across primary_phone, normalized_phone, registered_number, secondary_phone.
@@ -49,7 +49,7 @@ def find_lead_by_phone(db: Session, raw_phone: str) -> Optional[Lead]:
         return None
 
     # 1. SQL ILIKE query across all contact columns
-    stmt = select(Lead).where(
+    conditions = [
         or_(
             Lead.normalized_phone.ilike(f"%{core_10}%"),
             Lead.primary_phone.ilike(f"%{core_10}%"),
@@ -57,7 +57,11 @@ def find_lead_by_phone(db: Session, raw_phone: str) -> Optional[Lead]:
             Lead.secondary_phone.ilike(f"%{core_10}%")
         ),
         Lead.is_archived == False
-    ).order_by(Lead.updated_at.desc(), Lead.created_at.desc())
+    ]
+    if hospital_id:
+        conditions.append(Lead.hospital_id == hospital_id)
+
+    stmt = select(Lead).where(*conditions).order_by(Lead.updated_at.desc(), Lead.created_at.desc())
     lead = db.scalars(stmt).first()
     if lead:
         return lead
@@ -134,8 +138,16 @@ async def notify_call_start(
     if not normalized_phone or len(normalized_phone) < 8:
         normalized_phone = raw_phone.replace("+", "").replace(" ", "").replace("-", "")
 
+    hosp_param = str(raw_data.get("hospital") or raw_data.get("hospital_id") or raw_data.get("hospital_code") or "").strip()
+    target_hospital_id = None
+    if hosp_param:
+        from app.modules.administration.hospital_models import Hospital
+        h_match = db.scalars(select(Hospital).where(or_(Hospital.id == hosp_param, Hospital.code.ilike(hosp_param), Hospital.name.ilike(f"%{hosp_param}%")))).first()
+        if h_match:
+            target_hospital_id = h_match.id
+
     # Match existing lead or create placeholder
-    lead = find_lead_by_phone(db, raw_phone)
+    lead = find_lead_by_phone(db, raw_phone, hospital_id=target_hospital_id)
     is_new = False
     suffix = raw_phone[-4:] if len(raw_phone) >= 4 else raw_phone
 
@@ -146,6 +158,7 @@ async def notify_call_start(
             primary_phone=raw_phone,
             normalized_phone=normalized_phone,
             city="Hassan",
+            hospital_id=target_hospital_id,
             lead_source=LeadSourceEnum.INCOMING_CALL.value if dir_enum == CallDirectionEnum.INCOMING.value else LeadSourceEnum.MANUAL.value,
             department="Fertility & IVF",
             lead_status=LeadStatusEnum.NEW.value,
@@ -328,13 +341,22 @@ async def sync_mobile_call_log(
     core_10 = clean_phone_10(raw_phone)
     active_info = ACTIVE_CALLS.pop(core_10, None)
 
+    # Extract hospital parameter if passed
+    hosp_param = str(raw_data.get("hospital") or raw_data.get("hospital_id") or raw_data.get("hospital_code") or "").strip()
+    target_hospital_id = None
+    if hosp_param:
+        from app.modules.administration.hospital_models import Hospital
+        h_match = db.scalars(select(Hospital).where(or_(Hospital.id == hosp_param, Hospital.code.ilike(hosp_param), Hospital.name.ilike(f"%{hosp_param}%")))).first()
+        if h_match:
+            target_hospital_id = h_match.id
+
     # 1. Match or Create Lead in Database (Zero Overlap / Zero Mixing)
     lead = None
     if active_info and active_info.get("lead_id"):
         lead = db.get(Lead, active_info["lead_id"])
 
     if not lead:
-        lead = find_lead_by_phone(db, raw_phone)
+        lead = find_lead_by_phone(db, raw_phone, hospital_id=target_hospital_id)
 
     suffix = raw_phone[-4:] if len(raw_phone) >= 4 else raw_phone
     if not lead:
@@ -343,6 +365,7 @@ async def sync_mobile_call_log(
             primary_phone=raw_phone,
             normalized_phone=normalized_phone,
             city="Hassan",
+            hospital_id=target_hospital_id,
             lead_source=LeadSourceEnum.INCOMING_CALL.value if dir_enum == CallDirectionEnum.INCOMING.value else LeadSourceEnum.MANUAL.value,
             department="Fertility & IVF",
             lead_status=LeadStatusEnum.NEW.value,
@@ -353,6 +376,8 @@ async def sync_mobile_call_log(
         db.flush()
         logger.info(f"Auto-created new lead id={lead.id} from mobile sync.")
     else:
+        if target_hospital_id and not lead.hospital_id:
+            lead.hospital_id = target_hospital_id
         # If the executive already entered real patient details during active call, PRESERVE THEM!
         if lead.patient_name.startswith("In-Call Lead") and not raw_data.get("patient_name"):
             lead.patient_name = f"Mobile Inquiry {suffix}"
@@ -398,6 +423,7 @@ async def sync_mobile_call_log(
     call = Call(
         external_call_id=external_call_id,
         lead_id=lead.id,
+        hospital_id=target_hospital_id or (lead.hospital_id if lead else None),
         phone_number=raw_phone,
         normalized_phone=normalized_phone,
         direction=dir_enum,

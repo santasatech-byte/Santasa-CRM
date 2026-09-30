@@ -16,6 +16,7 @@ class CallSummary(BaseModel):
     normalized_phone: str
     direction: str
     executive_id: Optional[str] = None
+    hospital_id: Optional[str] = None
     branch_id: Optional[str] = None
     started_at: datetime
     answered_at: Optional[datetime] = None
