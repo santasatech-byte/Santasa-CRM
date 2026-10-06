@@ -290,6 +290,7 @@ function updateHospitalBranding(hospitalCode, hospitalName, executiveName) {
   const loginImg  = document.getElementById("loginLogoImg");
   const welcomeTitle      = document.getElementById("dashboardWelcomeTitle");
   const profileName       = document.getElementById("userProfileName");
+  const profileRole       = document.getElementById("userProfileRole");
   const currentHospDisplay = document.getElementById("currentHospitalDisplay");
 
   // Determine which logo image and metadata to use
@@ -302,10 +303,15 @@ function updateHospitalBranding(hospitalCode, hospitalName, executiveName) {
   if (brandImg) { brandImg.src = logoSrc; brandImg.alt = logoAlt; }
   if (loginImg) { loginImg.src = logoSrc; loginImg.alt = logoAlt; }
 
-  // Toggle Admin navigation item and user dropdown admin link visibility based on role
+  // Toggle Admin navigation item, user dropdown admin link, and tenant switcher based on role
   const isAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (profileRole) {
+    profileRole.textContent = isAdmin ? "Super Admin" : "Executive";
+  }
   const navAdmin = document.getElementById("navAdmin");
   const dropdownAdminLink = document.getElementById("dropdownAdminLink");
+  const adminTenantSwitcher = document.getElementById("adminTenantSwitcherSection");
+
   if (navAdmin) {
     if (isAdmin) {
       navAdmin.classList.remove("hidden");
@@ -322,6 +328,15 @@ function updateHospitalBranding(hospitalCode, hospitalName, executiveName) {
     } else {
       dropdownAdminLink.classList.add("hidden");
       dropdownAdminLink.style.setProperty("display", "none", "important");
+    }
+  }
+  if (adminTenantSwitcher) {
+    if (isAdmin) {
+      adminTenantSwitcher.classList.remove("hidden");
+      adminTenantSwitcher.style.setProperty("display", "block", "important");
+    } else {
+      adminTenantSwitcher.classList.add("hidden");
+      adminTenantSwitcher.style.setProperty("display", "none", "important");
     }
   }
 
@@ -681,6 +696,14 @@ async function openLeadActionDrawer(leadId) {
     showToast("Could not load lead details.", "error");
     return;
   }
+
+  // Tenant Isolation: Non-admin executive can only access leads from their assigned hospital
+  const isSuperAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (!isSuperAdmin && lead.hospital_code && lead.hospital_code !== currentHospital) {
+    showToast("Access restricted: You do not have permission to view patient records from other hospitals.", "error");
+    return;
+  }
+
   currentSelectedLead = lead;
 
   const drawer = document.getElementById("leadActionDrawerModal");
@@ -848,6 +871,14 @@ async function openUpdateClientLead(leadId) {
 
   if (!lead) {
     showToast("Lead not found", "error");
+    return;
+  }
+
+  // Tenant Isolation: Non-admin executive can only view leads from their assigned hospital
+  const isSuperAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (!isSuperAdmin && lead.hospital_code && lead.hospital_code !== currentHospital) {
+    showToast("Access restricted: You do not have permission to view patient records from other hospital branches.", "error");
+    switchTab("leads");
     return;
   }
 
@@ -1020,6 +1051,13 @@ async function handleUpdateLeadSubmit(e) {
   e.preventDefault();
   const leadId = document.getElementById("updateLeadId").value;
   if (!leadId) return;
+
+  // Tenant Isolation: Non-admin executive can only update leads from their assigned hospital
+  const isSuperAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (!isSuperAdmin && currentSelectedLead?.hospital_code && currentSelectedLead.hospital_code !== currentHospital) {
+    showToast("Access restricted: You cannot modify records belonging to other hospital branches.", "error");
+    return;
+  }
 
   const getVal = id => {
     const el = document.getElementById(id);
@@ -1496,6 +1534,23 @@ function clearUserDataAndDOM() {
   // Reset forms
   document.getElementById("leadFilterForm")?.reset();
   document.getElementById("createLeadForm")?.reset();
+
+  // Reset Admin & Tenant isolation elements
+  const navAdmin = document.getElementById("navAdmin");
+  if (navAdmin) {
+    navAdmin.classList.add("hidden");
+    navAdmin.style.setProperty("display", "none", "important");
+  }
+  const dropdownAdminLink = document.getElementById("dropdownAdminLink");
+  if (dropdownAdminLink) {
+    dropdownAdminLink.classList.add("hidden");
+    dropdownAdminLink.style.setProperty("display", "none", "important");
+  }
+  const adminTenantSwitcher = document.getElementById("adminTenantSwitcherSection");
+  if (adminTenantSwitcher) {
+    adminTenantSwitcher.classList.add("hidden");
+    adminTenantSwitcher.style.setProperty("display", "none", "important");
+  }
 }
 
 async function loginUser(email, password) {
@@ -1601,7 +1656,12 @@ async function handleLogout() {
 }
 
 async function switchHospitalTenant(hosp, email, password = "Executive@2026!") {
-  showToast(`Switching to ${hosp}...`, "info");
+  const isAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (!isAdmin) {
+    showToast("Access restricted: Hospital switching is only available to Super Administrators.", "error");
+    return;
+  }
+  showToast(`Switching context to ${hosp}...`, "info");
   document.getElementById("userDropdownMenu")?.classList.add("hidden");
   clearUserDataAndDOM();
   await loginUser(email, password);
@@ -1851,11 +1911,28 @@ async function initApp() {
   const loginPassInput = document.getElementById("loginPasswordInput");
   const togglePassBtn = document.getElementById("toggleLoginPasswordBtn");
 
-  if (loginHospSelect && loginEmailInput && loginPassInput) {
+  if (loginHospSelect) {
     loginHospSelect.addEventListener("change", (e) => {
-      loginEmailInput.value = e.target.value;
-      loginPassInput.value = e.target.value.includes("admin") ? "Admin@2026!" : "Executive@2026!";
       updateLoginLogoByBranch(e.target.value);
+    });
+  }
+
+  if (loginEmailInput) {
+    loginEmailInput.addEventListener("input", (e) => {
+      const val = (e.target.value || "").toLowerCase();
+      if (val.includes("ssm") || val.includes("hospital")) {
+        updateLoginLogoByBranch("ssm");
+        if (loginHospSelect) loginHospSelect.value = "ssm";
+      } else if (val.includes("mysore")) {
+        updateLoginLogoByBranch("smh");
+        if (loginHospSelect) loginHospSelect.value = "smh";
+      } else if (val.includes("admin")) {
+        updateLoginLogoByBranch("admin");
+        if (loginHospSelect) loginHospSelect.value = "admin";
+      } else if (val.includes("santasa") || val.includes("hassan")) {
+        updateLoginLogoByBranch("shh");
+        if (loginHospSelect) loginHospSelect.value = "shh";
+      }
     });
   }
 
@@ -1865,46 +1942,6 @@ async function initApp() {
       loginPassInput.type = isPass ? "text" : "password";
       togglePassBtn.querySelector(".eye-show")?.classList.toggle("hidden", isPass);
       togglePassBtn.querySelector(".eye-hide")?.classList.toggle("hidden", !isPass);
-    });
-  }
-
-  const fillExecBtn = document.getElementById("fillExecutiveDemoBtn");
-  if (fillExecBtn && loginEmailInput && loginPassInput) {
-    fillExecBtn.addEventListener("click", () => {
-      if (loginHospSelect) loginHospSelect.value = "ssm@hospital.com";
-      loginEmailInput.value = "ssm@hospital.com";
-      loginPassInput.value = "Executive@2026!";
-      updateLoginLogoByBranch("ssm");
-    });
-  }
-
-  const fillHassanBtn = document.getElementById("fillHassanDemoBtn");
-  if (fillHassanBtn && loginEmailInput && loginPassInput) {
-    fillHassanBtn.addEventListener("click", () => {
-      if (loginHospSelect) loginHospSelect.value = "executive@santasa.com";
-      loginEmailInput.value = "executive@santasa.com";
-      loginPassInput.value = "Executive@2026!";
-      updateLoginLogoByBranch("shh");
-    });
-  }
-
-  const fillMysoreBtn = document.getElementById("fillMysoreDemoBtn");
-  if (fillMysoreBtn && loginEmailInput && loginPassInput) {
-    fillMysoreBtn.addEventListener("click", () => {
-      if (loginHospSelect) loginHospSelect.value = "mysore@santasa.com";
-      loginEmailInput.value = "mysore@santasa.com";
-      loginPassInput.value = "Executive@2026!";
-      updateLoginLogoByBranch("smh");
-    });
-  }
-
-  const fillAdminBtn = document.getElementById("fillAdminDemoBtn");
-  if (fillAdminBtn && loginEmailInput && loginPassInput) {
-    fillAdminBtn.addEventListener("click", () => {
-      if (loginHospSelect) loginHospSelect.value = "admin@santasa.com";
-      loginEmailInput.value = "admin@santasa.com";
-      loginPassInput.value = "Admin@2026!";
-      updateLoginLogoByBranch("admin");
     });
   }
 
@@ -2689,6 +2726,12 @@ function switchAdminSubTab(targetTab) {
 }
 
 async function loadAdminDashboardData() {
+  const isAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+  if (!isAdmin) {
+    console.warn("Unauthorized attempt to load admin dashboard data");
+    return;
+  }
+
   const refreshBtns = [
     document.getElementById("btnRefreshAdminData"),
     document.getElementById("btnRefreshAdminStaff"),

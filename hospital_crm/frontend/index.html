@@ -95,20 +95,22 @@
               <span style="font-size: 14px;">👑</span>
               <span>Admin Dashboard</span>
             </button>
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-section-title">SWITCH HOSPITAL TENANT</div>
-            <button class="dropdown-item switch-tenant-btn" data-hospital="SSM" data-email="ssm@hospital.com">
-              <span class="tenant-dot ssm"></span>
-              <span>SSM Hospital</span>
-            </button>
-            <button class="dropdown-item switch-tenant-btn" data-hospital="SHH" data-email="executive@santasa.com">
-              <span class="tenant-dot shh"></span>
-              <span>Santasa Hassan Hospital</span>
-            </button>
-            <button class="dropdown-item switch-tenant-btn" data-hospital="SMH" data-email="mysore@santasa.com">
-              <span class="tenant-dot smh"></span>
-              <span>Santasa Mysore Hospital</span>
-            </button>
+            <div id="adminTenantSwitcherSection" class="admin-only-item hidden">
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-section-title">SWITCH HOSPITAL TENANT</div>
+              <button class="dropdown-item switch-tenant-btn" data-hospital="SSM" data-email="ssm@hospital.com">
+                <span class="tenant-dot ssm"></span>
+                <span>SSM Hospital</span>
+              </button>
+              <button class="dropdown-item switch-tenant-btn" data-hospital="SHH" data-email="executive@santasa.com">
+                <span class="tenant-dot shh"></span>
+                <span>Santasa Hassan Hospital</span>
+              </button>
+              <button class="dropdown-item switch-tenant-btn" data-hospital="SMH" data-email="mysore@santasa.com">
+                <span class="tenant-dot smh"></span>
+                <span>Santasa Mysore Hospital</span>
+              </button>
+            </div>
             <div class="dropdown-divider"></div>
             <button class="dropdown-item logout-item" id="logoutBtn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1812,13 +1814,13 @@
 
       <form id="loginForm" class="modal-body login-form-body">
         <div class="form-group">
-          <label for="loginHospitalSelect">Hospital Branch Tenant *</label>
+          <label for="loginHospitalSelect">Hospital Branch</label>
           <div class="select-with-icon-wrapper">
             <select id="loginHospitalSelect" class="hummatic-select">
-              <option value="ssm@hospital.com" selected>🏥 SSM Hospital (SSM Branch)</option>
-              <option value="executive@santasa.com">🏥 Santasa Hassan Hospital (SHH Branch)</option>
-              <option value="mysore@santasa.com">🏥 Santasa Mysore Hospital (SMH Branch)</option>
-              <option value="admin@santasa.com">👑 Super Administrator (All Hospitals)</option>
+              <option value="ssm" selected>🏥 SSM Hospital</option>
+              <option value="shh">🏥 Santasa Hassan Hospital</option>
+              <option value="smh">🏥 Santasa Mysore Hospital</option>
+              <option value="admin">👑 Multi-Hospital Super Administrator</option>
             </select>
           </div>
         </div>
@@ -1859,23 +1861,6 @@
           </button>
         </div>
 
-        <div class="demo-section-wrapper">
-          <span class="demo-section-label">Quick Sign-In Presets:</span>
-          <div class="demo-buttons-row">
-            <button type="button" class="btn-demo-pill" id="fillExecutiveDemoBtn" title="SSM Hospital">
-              🏥 SSM Exec
-            </button>
-            <button type="button" class="btn-demo-pill" id="fillHassanDemoBtn" title="Santasa Hassan">
-              🏥 Hassan Exec
-            </button>
-            <button type="button" class="btn-demo-pill" id="fillMysoreDemoBtn" title="Santasa Mysore">
-              🏥 Mysore Exec
-            </button>
-            <button type="button" class="btn-demo-pill" id="fillAdminDemoBtn" title="Super Administrator">
-              👑 Admin
-            </button>
-          </div>
-        </div>
 
         <div class="login-security-badge">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
