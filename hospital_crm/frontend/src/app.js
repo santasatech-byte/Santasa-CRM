@@ -1111,18 +1111,18 @@ async function openUpdateClientLead(leadId) {
         multiRecList.innerHTML = recordedCalls.map((c) => {
           const isInc = (c.direction || "").toLowerCase().includes("in");
           const callTime = c.started_at || c.created_at || new Date().toISOString();
-          const durationSec = c.duration || c.recording_duration || 30;
-          const durText = durationSec >= 60 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : `${durationSec}s`;
+          const durationSec = c.duration || c.recording_duration || 0;
+          const durText = durationSec > 0 ? (durationSec >= 60 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : `${durationSec}s`) : "Calculating...";
 
           return `
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+            <div data-call-id="${c.id}" data-call-status="${escapeHtml(c.status || 'Completed')}" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
               <div style="display: flex; align-items: center; gap: 8px; min-width: 170px;">
                 <span class="badge-pill ${isInc ? 'incoming' : 'outgoing'}" style="font-size: 11px; padding: 2px 7px;">
                   ${isInc ? 'Incoming' : 'Outgoing'}
                 </span>
                 <div style="display: flex; flex-direction: column;">
                   <span style="font-size: 12px; font-weight: 600; color: #0f172a;">${formatDisplayDate(callTime)}</span>
-                  <span style="font-size: 11px; color: #64748b;">Duration: ${durText} • ${escapeHtml(c.status || 'Completed')}</span>
+                  <span class="call-duration-text" style="font-size: 11px; color: #64748b;">Duration: ${durText} • ${escapeHtml(c.status || 'Completed')}</span>
                 </div>
               </div>
               <div style="display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end;">
@@ -1134,6 +1134,30 @@ async function openUpdateClientLead(leadId) {
             </div>
           `;
         }).join("");
+
+        // Dynamically compute exact duration from audio file metadata and sync to DB
+        multiRecList.querySelectorAll("audio").forEach((aud, idx) => {
+          aud.addEventListener("loadedmetadata", () => {
+            if (aud.duration && !isNaN(aud.duration) && aud.duration > 0) {
+              const exactSec = Math.round(aud.duration);
+              const m = Math.floor(exactSec / 60);
+              const s = exactSec % 60;
+              const formattedDur = m > 0 ? `${m}m ${s}s` : `${s}s`;
+              const card = aud.closest("div[data-call-id]");
+              if (card) {
+                const durEl = card.querySelector(".call-duration-text");
+                const callStatus = card.getAttribute("data-call-status") || "Completed";
+                if (durEl) {
+                  durEl.textContent = `Duration: ${formattedDur} • ${callStatus}`;
+                }
+              }
+              const callObj = recordedCalls[idx];
+              if (callObj && callObj.id && callObj.id !== "lead-rec" && callObj.duration !== exactSec) {
+                supabase.from("calls").update({ duration: exactSec, recording_duration: exactSec }).eq("id", callObj.id).then();
+              }
+            }
+          });
+        });
       }
     })();
   }
