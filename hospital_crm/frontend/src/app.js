@@ -504,13 +504,40 @@ async function loadDashboardData() {
 
     renderTodayLeadsTable(todayLeads.length > 0 ? todayLeads : liveLeads.slice(0, 5));
 
-    // ── Missed Calls KPI ────────────────────────────────────────
+    // ── Missed Calls KPI (Real telephony + Scheduled followups) ──
+    let missedTelephonyCount = 0;
+    try {
+      const hospId = currentHospital === "SHH" ? "hosp-shh-fd72cfcc" : (currentHospital === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4");
+      const { data: dbMissed, error: mErr } = await supabase
+        .from("calls")
+        .select("id, status")
+        .eq("hospital_id", hospId)
+        .or("status.ilike.%miss%,status.ilike.%not answered%,status.ilike.%reject%");
+      if (!mErr && dbMissed) {
+        missedTelephonyCount = dbMissed.length;
+      }
+    } catch (e) {
+      console.warn("Could not load missed calls count from calls:", e);
+    }
+
     const callsData = await apiRequest("/followups/scheduled-calls").catch(() => []);
-    const missedCount = Array.isArray(callsData)
+    const scheduledMissed = Array.isArray(callsData)
       ? callsData.filter(c => (c.status || c.call_status || "").toLowerCase().includes("miss")).length
       : 0;
+    const totalMissed = missedTelephonyCount + scheduledMissed;
+
     const kpiMissed = document.getElementById("kpiMissedCalls");
-    if (kpiMissed) kpiMissed.textContent = missedCount;
+    if (kpiMissed) kpiMissed.textContent = totalMissed;
+
+    // Click handler for Missed Calls card to view Call Notifications
+    const kpiCardMissed = document.getElementById("kpiCardMissedCalls");
+    if (kpiCardMissed && !kpiCardMissed.dataset.bound) {
+      kpiCardMissed.dataset.bound = "true";
+      kpiCardMissed.addEventListener("click", () => {
+        history.pushState({}, "", "#/call-notifications");
+        switchTab("call-notifications");
+      });
+    }
 
     // ── Pending Reviews KPI ──────────────────────────────────────
     const reviewsData = await apiRequest("/leads/reviews/list").catch(() => []);
@@ -519,7 +546,7 @@ async function loadDashboardData() {
     if (kpiReviews) kpiReviews.textContent = reviewCount;
 
     // ── Nav Badges ───────────────────────────────────────────────
-    updateNavBadge("navCallsBadge", callsData.length || 0);
+    updateNavBadge("navCallsBadge", (callsData.length || 0) + missedTelephonyCount);
     updateNavBadge("navReviewsBadge", reviewCount);
 
   } catch (err) {
@@ -1359,6 +1386,42 @@ async function loadCallNotifications() {
   try {
     const calls = await apiRequest("/followups/scheduled-calls?limit=150").catch(() => []);
     allScheduledCalls = calls || [];
+
+    // Also fetch real telephony missed and not answered calls from Supabase
+    try {
+      const hospId = currentHospital === "SHH" ? "hosp-shh-fd72cfcc" : (currentHospital === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4");
+      const { data: dbMissed, error: mErr } = await supabase
+        .from("calls")
+        .select("id, phone_number, normalized_phone, started_at, direction, status, lead_id")
+        .eq("hospital_id", hospId)
+        .or("status.ilike.%miss%,status.ilike.%not answered%,status.ilike.%reject%")
+        .order("started_at", { ascending: false })
+        .limit(100);
+
+      if (!mErr && Array.isArray(dbMissed) && dbMissed.length > 0) {
+        const mappedDbCalls = dbMissed.map(c => {
+          const lead = (liveLeads && liveLeads.find(l => l.id === c.lead_id)) || {};
+          const d = new Date(c.started_at || Date.now());
+          const dateFormatted = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()} ${d.toLocaleTimeString("en-GB", { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+          return {
+            id: c.id,
+            lead_id: c.lead_id,
+            name: lead.patient_name || `Patient (${c.phone_number})`,
+            contact_number: c.normalized_phone || c.phone_number || "",
+            lead_owner: "Executive",
+            date: dateFormatted,
+            follow_up_date_time: dateFormatted,
+            call_status: c.status || "Missed",
+            lead_status: lead.lead_status || "New",
+            source: "mobile"
+          };
+        });
+        allScheduledCalls = [...mappedDbCalls, ...allScheduledCalls];
+      }
+    } catch (dbEx) {
+      console.warn("Could not fetch missed calls from db:", dbEx);
+    }
+
     filteredScheduledCalls = [...allScheduledCalls];
     callsCurrentPage = 1;
     renderScheduledCallsTable();
