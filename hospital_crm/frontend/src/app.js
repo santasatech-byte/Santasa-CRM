@@ -569,6 +569,26 @@ function renderTodayLeadsTable(leads) {
   });
 }
 
+let phoneCallCountsMap = {};
+
+function updatePhoneCallCounts(callsList) {
+  if (!Array.isArray(callsList)) return;
+  callsList.forEach(c => {
+    const raw = c.phone_number || c.normalized_phone || "";
+    const core10 = raw.replace(/\D/g, "").slice(-10);
+    if (!core10 || core10.length < 10) return;
+    if (!phoneCallCountsMap[core10]) {
+      phoneCallCountsMap[core10] = { total: 0, incoming: 0, outgoing: 0 };
+    }
+    phoneCallCountsMap[core10].total += 1;
+    if ((c.direction || "").toLowerCase().includes("in")) {
+      phoneCallCountsMap[core10].incoming += 1;
+    } else {
+      phoneCallCountsMap[core10].outgoing += 1;
+    }
+  });
+}
+
 // =============================================================
 // Leads List View Data (Matching Screenshots 2 & 3)
 // =============================================================
@@ -579,7 +599,13 @@ async function loadLeadsData() {
   }
 
   try {
-    const leads = await apiRequest("/leads?limit=150").catch(() => []);
+    const [leads, callsRes] = await Promise.all([
+      apiRequest("/leads?limit=150").catch(() => []),
+      supabase.from("calls").select("phone_number, normalized_phone, direction").limit(500)
+    ]);
+    if (callsRes && callsRes.data) {
+      updatePhoneCallCounts(callsRes.data);
+    }
     liveLeads = leads || [];
     filteredLeads = [...liveLeads];
     renderAssignedLeadsTable(filteredLeads);
@@ -611,6 +637,13 @@ function renderAssignedLeadsTable(leads) {
     const consultDate = l.consultation_date ? formatDisplayDate(l.consultation_date) : '';
     const surgeryDate = l.surgery_date ? formatDisplayDate(l.surgery_date) : '';
 
+    const phone = l.primary_phone || l.normalized_phone || '';
+    const core10 = phone.replace(/\D/g, "").slice(-10);
+    const stats = phoneCallCountsMap[core10];
+    const callPill = (stats && stats.total > 0)
+      ? `<span class="badge-pill" style="font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600; background: #e0f2fe; color: #0369a1; white-space: nowrap; margin-left: 4px;" title="${stats.total} total calls (${stats.incoming} In • ${stats.outgoing} Out)">📞 ${stats.total} call${stats.total > 1 ? 's' : ''} (${stats.incoming} In • ${stats.outgoing} Out)</span>`
+      : '';
+
     return `
       <tr data-lead-id="${l.id}">
         <td>
@@ -621,7 +654,12 @@ function renderAssignedLeadsTable(leads) {
         <td>${createdDate}</td>
         <td><a class="lead-link view-lead-action" data-lead-id="${l.id}">${escapeHtml(l.patient_name)}</a></td>
         <td>${escapeHtml(l.patient_name)}</td>
-        <td>${escapeHtml(l.primary_phone || l.normalized_phone || '')}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+            <span style="font-family: monospace; font-weight: 600;">${escapeHtml(phone || '—')}</span>
+            ${callPill}
+          </div>
+        </td>
         <td>${escapeHtml(l.destination_number ? 'Answered' : '')}</td>
         <td>${escapeHtml(l.patient_type || 'Digital Patient')}</td>
         <td>${consultDate}</td>
@@ -934,14 +972,143 @@ async function openUpdateClientLead(leadId) {
   setVal("updateCallStatus", lead.destination_number ? "Answered" : "Missed");
   setVal("updateCallDirection", lead.call_direction || "Incoming");
 
+  // ── Multi-Call Audio Recordings for this Patient Number ───────────
+  const multiRecList = document.getElementById("updateMultiRecordingsList");
+  const callsCountEl = document.getElementById("updateCallsCount");
+  const phoneDisplayEl = document.getElementById("updateCallsPhoneDisplay");
   const audioPlayer = document.getElementById("updateAudioPlayer");
   const audioBox = document.getElementById("updateAudioPlayerBox");
-  if (lead.recording_url && audioPlayer && audioBox) {
-    audioPlayer.src = lead.recording_url;
-    audioBox.style.display = "flex";
-  } else if (audioBox) {
-    if (audioPlayer) audioPlayer.src = "";
-    audioBox.style.display = "none";
+
+  const rawPhone = lead.primary_phone || lead.normalized_phone || "";
+  const corePhone = rawPhone.replace(/\D/g, "").slice(-10);
+
+  if (phoneDisplayEl) {
+    phoneDisplayEl.textContent = corePhone ? `+91 ${corePhone}` : "";
+  }
+
+  if (multiRecList) {
+    multiRecList.innerHTML = `
+      <div style="font-size: 12px; color: #64748b; font-style: italic; padding: 8px; background: #f8fafc; border-radius: 6px;">
+        Checking call recordings for +91 ${corePhone}...
+      </div>
+    `;
+
+    (async () => {
+      let patientCalls = [];
+      try {
+        let query = supabase.from("calls").select("*");
+        if (corePhone && corePhone.length >= 10) {
+          query = query.or(`phone_number.ilike.%${corePhone}%,normalized_phone.ilike.%${corePhone}%,lead_id.eq.${lead.id}`);
+        } else {
+          query = query.eq("lead_id", lead.id);
+        }
+        const { data: matchedCalls, error: cErr } = await query.order("started_at", { ascending: false });
+        if (!cErr && matchedCalls) {
+          patientCalls = matchedCalls;
+        }
+      } catch (err) {
+        console.warn("Could not fetch patient call recordings:", err);
+      }
+
+      // Compute incoming and outgoing counts for this patient number
+      const incomingList = patientCalls.filter(c => (c.direction || "").toLowerCase().includes("in"));
+      const outgoingList = patientCalls.filter(c => !(c.direction || "").toLowerCase().includes("in"));
+      const inCount = incomingList.length;
+      const outCount = outgoingList.length;
+      const totalCallsCount = patientCalls.length;
+
+      // Update IVR Section Badges
+      const badgeIn = document.getElementById("updateBadgeIncomingCalls");
+      const badgeOut = document.getElementById("updateBadgeOutgoingCalls");
+      const badgeTotal = document.getElementById("updateBadgeTotalCalls");
+      if (badgeIn) badgeIn.textContent = `📞 ${inCount} Incoming`;
+      if (badgeOut) badgeOut.textContent = `📱 ${outCount} Outgoing`;
+      if (badgeTotal) badgeTotal.textContent = `Total: ${totalCallsCount}`;
+
+      // Update Header Title Call Frequency Pill
+      const headerFrequencyPill = document.getElementById("updateLeadCallFrequencyPill");
+      if (headerFrequencyPill) {
+        if (totalCallsCount > 0) {
+          headerFrequencyPill.style.display = "inline-flex";
+          headerFrequencyPill.textContent = `📞 Called ${totalCallsCount} Time${totalCallsCount === 1 ? '' : 's'} (${inCount} In • ${outCount} Out)`;
+        } else {
+          headerFrequencyPill.style.display = "none";
+        }
+      }
+
+      // Update Contact Number Frequency Badge
+      const contactFrequencyBadge = document.getElementById("updateContactCallFrequencyBadge");
+      if (contactFrequencyBadge) {
+        if (totalCallsCount > 0) {
+          contactFrequencyBadge.style.display = "inline-block";
+          contactFrequencyBadge.textContent = `📞 ${totalCallsCount} Call${totalCallsCount === 1 ? '' : 's'} (${inCount} In • ${outCount} Out)`;
+        } else {
+          contactFrequencyBadge.style.display = "none";
+        }
+      }
+
+      // Update Recordings Header Badges
+      const callsInPill = document.getElementById("updateCallsIncomingCount");
+      const callsOutPill = document.getElementById("updateCallsOutgoingCount");
+      if (callsInPill) callsInPill.textContent = `${inCount} In`;
+      if (callsOutPill) callsOutPill.textContent = `${outCount} Out`;
+
+      // Filter calls with recording_url
+      const recordedCalls = patientCalls.filter(c => !!c.recording_url);
+
+      // If no recorded calls found in calls table but lead has recording_url, include it
+      if (recordedCalls.length === 0 && lead.recording_url) {
+        recordedCalls.push({
+          id: "lead-rec",
+          started_at: lead.created_at,
+          created_at: lead.created_at,
+          direction: lead.call_direction || "Incoming",
+          duration: 30,
+          status: "Completed",
+          recording_url: lead.recording_url
+        });
+      }
+
+      if (callsCountEl) {
+        callsCountEl.textContent = `${recordedCalls.length} recorded`;
+      }
+
+      if (recordedCalls.length === 0) {
+        multiRecList.innerHTML = `
+          <div style="font-size: 12px; color: #64748b; padding: 10px 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: space-between;">
+            <span>No call recordings found yet for ${corePhone ? '+91 ' + corePhone : 'this patient'}.</span>
+            <span style="font-size: 11px; color: #0d9488; font-weight: 500;">Auto-sync active</span>
+          </div>
+        `;
+      } else {
+        multiRecList.innerHTML = recordedCalls.map((c) => {
+          const isInc = (c.direction || "").toLowerCase().includes("in");
+          const callTime = c.started_at || c.created_at || new Date().toISOString();
+          const durationSec = c.duration || c.recording_duration || 30;
+          const durText = durationSec >= 60 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : `${durationSec}s`;
+
+          return `
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+              <div style="display: flex; align-items: center; gap: 8px; min-width: 170px;">
+                <span class="badge-pill ${isInc ? 'incoming' : 'outgoing'}" style="font-size: 11px; padding: 2px 7px;">
+                  ${isInc ? 'Incoming' : 'Outgoing'}
+                </span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 12px; font-weight: 600; color: #0f172a;">${formatDisplayDate(callTime)}</span>
+                  <span style="font-size: 11px; color: #64748b;">Duration: ${durText} • ${escapeHtml(c.status || 'Completed')}</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end;">
+                <audio controls src="${c.recording_url}" preload="metadata" style="height: 30px; width: 210px;"></audio>
+                <a href="${c.recording_url}" target="_blank" download title="Open / Download Audio" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #ccfbf1; border-radius: 6px; background: #f0fdfa; color: #0f766e; text-decoration: none; font-size: 13px;">
+                  ⬇️
+                </a>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    })();
   }
 
   setVal("updateUtmSource", lead.utm_source);
@@ -1631,6 +1798,7 @@ async function loginUser(email, password) {
 
     // Start Realtime subscription for live calls & leads
     startRealtimeSubscription();
+    loadNotificationsAndReminders();
     return true;
   } catch (err) {
     showError(`Login failed: ${err.message}`);
@@ -1700,11 +1868,18 @@ async function initApp() {
     cancelLeadBtn.addEventListener("click", () => switchTab(previousNavTab || "leads"));
   }
 
-  // Floating notification bell
+  // Notification bell buttons (Header & Floating)
   const bell = document.getElementById("floatingNotificationBell");
   if (bell) {
-    bell.addEventListener("click", () => switchTab("calls"));
+    bell.addEventListener("click", () => toggleNotificationDrawer());
   }
+
+  const headerBell = document.getElementById("headerNotificationBtn");
+  if (headerBell) {
+    headerBell.addEventListener("click", () => toggleNotificationDrawer());
+  }
+
+  setupNotificationDrawerUI();
 
   // 2. Search in Leads List
   const searchInput = document.getElementById("leadSearchInput");
@@ -2240,6 +2415,7 @@ async function initApp() {
         updateHospitalBranding(currentUser.hospital_code, currentUser.hospitals?.name, currentUser.full_name);
         setAuthState("AUTHENTICATED");
         startRealtimeSubscription();
+        loadNotificationsAndReminders();
 
         const target = getInitialTab();
         if (target === "updateLead") {
@@ -2274,6 +2450,7 @@ async function initApp() {
         updateHospitalBranding(currentUser.hospital_code, currentUser.hospitals?.name, currentUser.full_name);
         setAuthState("AUTHENTICATED");
         startRealtimeSubscription();
+        loadNotificationsAndReminders();
         switchTab(getInitialTab());
       }
     }
@@ -2507,7 +2684,397 @@ function printCurrentLead() {
 }
 
 // =============================================================
-// Supabase Realtime Subscription
+// Real-time Notifications & Reminders Engine
+// =============================================================
+let notificationItems = [];
+let activeNotifFilterTab = "all";
+const READ_NOTIFS_STORAGE_KEY = "santasa_read_notifs_v1";
+
+function getReadNotifIds() {
+  try {
+    const raw = localStorage.getItem(READ_NOTIFS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveReadNotifId(id) {
+  try {
+    const list = getReadNotifIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem(READ_NOTIFS_STORAGE_KEY, JSON.stringify(list.slice(-300)));
+    }
+  } catch (e) {}
+}
+
+function markAllNotifsAsRead() {
+  const ids = notificationItems.map(n => n.id);
+  try {
+    localStorage.setItem(READ_NOTIFS_STORAGE_KEY, JSON.stringify(ids.slice(-300)));
+  } catch (e) {}
+  notificationItems.forEach(n => { n.read = true; });
+  updateNotificationBadges();
+  renderNotificationItems();
+  showToast("All notifications marked as read", "info");
+}
+
+function playNotificationChime() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    // Pleasant two-tone chime (E5 -> B5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(659.25, now); // E5
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.25);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(987.77, now + 0.12); // B5
+    gain2.gain.setValueAtTime(0.15, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.45);
+  } catch (e) {
+    // Audio autoplay might be blocked before first interaction
+  }
+}
+
+function toggleNotificationDrawer(forceOpen = null) {
+  const drawer = document.getElementById("notificationDrawerModal");
+  if (!drawer) return;
+  const isHidden = drawer.classList.contains("hidden");
+  const shouldOpen = forceOpen !== null ? forceOpen : isHidden;
+
+  if (shouldOpen) {
+    drawer.classList.remove("hidden");
+    loadNotificationsAndReminders();
+  } else {
+    drawer.classList.add("hidden");
+  }
+}
+
+function updateNotificationBadges() {
+  const readIds = getReadNotifIds();
+  const unreadCount = notificationItems.filter(n => !n.read && !readIds.includes(n.id)).length;
+
+  const headerBadge = document.getElementById("headerNotifBadge");
+  if (headerBadge) {
+    headerBadge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+    if (unreadCount > 0) {
+      headerBadge.classList.remove("hidden");
+    } else {
+      headerBadge.classList.add("hidden");
+    }
+  }
+
+  const floatingBadge = document.getElementById("floatingBellBadge");
+  if (floatingBadge) {
+    floatingBadge.textContent = unreadCount;
+    floatingBadge.style.display = unreadCount > 0 ? "flex" : "none";
+  }
+
+  // Update tab counters
+  const totalCount = notificationItems.length;
+  const remindersCount = notificationItems.filter(n => n.category === "reminders").length;
+  const callsCount = notificationItems.filter(n => n.category === "calls").length;
+  const historyCount = notificationItems.filter(n => n.category === "history" || n.read || readIds.includes(n.id)).length;
+
+  const tAll = document.getElementById("notifTabAllBadge");
+  const tRem = document.getElementById("notifTabRemindersBadge");
+  const tCalls = document.getElementById("notifTabCallsBadge");
+  const tHist = document.getElementById("notifTabHistoryBadge");
+
+  if (tAll) tAll.textContent = totalCount;
+  if (tRem) tRem.textContent = remindersCount;
+  if (tCalls) tCalls.textContent = callsCount;
+  if (tHist) tHist.textContent = historyCount;
+}
+
+async function loadNotificationsAndReminders() {
+  if (!currentUser) return;
+  const readIds = getReadNotifIds();
+  const list = [];
+
+  try {
+    // 1. Fetch Followups / Reminders
+    const { data: followups } = await supabase
+      .from("followups")
+      .select("*, leads(patient_name, primary_phone, lead_status)")
+      .eq("hospital_code", currentHospital)
+      .order("scheduled_at", { ascending: false })
+      .limit(60);
+
+    if (Array.isArray(followups)) {
+      followups.forEach(f => {
+        const isPast = f.scheduled_at && new Date(f.scheduled_at) < new Date();
+        const patientName = f.leads?.patient_name || f.patient_name || "Patient";
+        const phone = f.leads?.primary_phone || f.phone || "";
+        const isDone = f.status === "completed" || f.status === "Done";
+        const isRead = isDone || readIds.includes(`fu-${f.id}`);
+
+        list.push({
+          id: `fu-${f.id}`,
+          rawId: f.id,
+          leadId: f.lead_id,
+          category: isDone ? "history" : "reminders",
+          type: "reminder",
+          badgeText: isPast && !isDone ? "Overdue Follow-up" : "Follow-up Reminder",
+          badgeClass: isPast && !isDone ? "is-missed" : "reminder",
+          title: `Follow-up: ${patientName}`,
+          description: f.notes || "Scheduled clinical check-in call with patient.",
+          timestamp: f.scheduled_at || f.created_at,
+          patientName,
+          phone,
+          read: isRead,
+          actions: [
+            { label: "📞 Call / Lead", action: "openLead", leadId: f.lead_id },
+            { label: "💬 WhatsApp", action: "whatsapp", phone, name: patientName },
+            { label: "✔ Done", action: "markDone", notifId: `fu-${f.id}`, followupId: f.id }
+          ]
+        });
+      });
+    }
+
+    // 2. Fetch Live & Recent Telephony Calls
+    const targetHospId = currentUser?.hospital_id || (currentHospital === "SHH" ? "hosp-shh-fd72cfcc" : (currentHospital === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4"));
+    let callsQuery = supabase.from("calls").select("*");
+    if (currentUser?.role !== "SUPER_ADMIN" && currentUser?.role !== "ADMIN") {
+      callsQuery = callsQuery.eq("hospital_id", targetHospId);
+    }
+    const { data: calls } = await callsQuery
+      .order("created_at", { ascending: false })
+      .limit(60);
+
+    if (Array.isArray(calls)) {
+      calls.forEach(c => {
+        const isMissed = (c.status || "").toLowerCase().includes("miss");
+        const callerName = c.patient_name || (c.phone_number ? `Caller (${c.phone_number})` : "Patient");
+        const isRead = readIds.includes(`call-${c.id}`);
+
+        list.push({
+          id: `call-${c.id}`,
+          rawId: c.id,
+          leadId: c.lead_id,
+          category: isMissed ? "calls" : "history",
+          type: "call",
+          badgeText: isMissed ? "Missed Call" : (c.direction === "outbound" ? "Outbound Call" : "Received Call"),
+          badgeClass: isMissed ? "call" : "history",
+          title: `${isMissed ? '🚨 Missed Call' : '📞 Call Log'}: ${callerName}`,
+          description: `Call duration: ${c.duration || 0}s • ${c.notes || 'Telephony mobile sync log'}`,
+          timestamp: c.created_at,
+          patientName: callerName,
+          phone: c.phone_number || "",
+          read: isRead,
+          actions: [
+            { label: "📞 Return Call", action: "dialNumber", phone: c.phone_number },
+            { label: "💬 WhatsApp", action: "whatsapp", phone: c.phone_number, name: callerName },
+            { label: "✔ Read", action: "markRead", notifId: `call-${c.id}` }
+          ]
+        });
+      });
+    }
+
+    // 3. Recent Lead Inquiries
+    if (Array.isArray(liveLeads) && liveLeads.length > 0) {
+      liveLeads.slice(0, 20).forEach(l => {
+        const isRead = readIds.includes(`lead-${l.id}`);
+        list.push({
+          id: `lead-${l.id}`,
+          rawId: l.id,
+          leadId: l.id,
+          category: "history",
+          type: "lead",
+          badgeText: l.lead_status || "New Lead",
+          badgeClass: "lead",
+          title: `Patient Inquiry: ${l.patient_name || 'Patient'}`,
+          description: `Source: ${l.lead_source || 'Website'} • Treatment: ${l.treatment_interest || 'IVF Consultation'}`,
+          timestamp: l.created_at,
+          patientName: l.patient_name,
+          phone: l.primary_phone,
+          read: isRead,
+          actions: [
+            { label: "View Profile", action: "openLead", leadId: l.id },
+            { label: "💬 WhatsApp", action: "whatsapp", phone: l.primary_phone, name: l.patient_name }
+          ]
+        });
+      });
+    }
+
+    // Sort chronologically (newest first)
+    list.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+    notificationItems = list;
+    updateNotificationBadges();
+    renderNotificationItems();
+  } catch (err) {
+    console.error("Error loading notifications & reminders:", err);
+  }
+}
+
+function renderNotificationItems() {
+  const container = document.getElementById("notifItemsContainer");
+  if (!container) return;
+
+  const readIds = getReadNotifIds();
+  let items = notificationItems;
+
+  if (activeNotifFilterTab === "reminders") {
+    items = notificationItems.filter(n => n.category === "reminders");
+  } else if (activeNotifFilterTab === "calls") {
+    items = notificationItems.filter(n => n.category === "calls" || n.type === "call");
+  } else if (activeNotifFilterTab === "history") {
+    items = notificationItems.filter(n => n.category === "history" || n.read || readIds.includes(n.id));
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="notif-empty-state">
+        <div class="notif-empty-icon">🔔</div>
+        <div class="notif-empty-text">No ${activeNotifFilterTab === 'all' ? '' : activeNotifFilterTab} notifications found</div>
+        <p style="font-size: 0.76rem; color: #94a3b8; margin: 0;">You're completely up to date for ${currentHospital} hospital!</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map(item => {
+    const isUnread = !item.read && !readIds.includes(item.id);
+    const unreadClass = isUnread ? "unread" : "";
+    const extraCardClass = item.badgeClass === "is-missed" ? "is-missed" : (item.type === "reminder" ? "is-reminder" : "");
+    const formattedTime = formatDisplayDate(item.timestamp);
+
+    const actionButtonsHtml = (item.actions || []).map(act => {
+      let btnClass = "notif-act-btn";
+      if (act.action === "whatsapp") btnClass += " whatsapp";
+      else if (act.action === "openLead" || act.action === "dialNumber") btnClass += " primary";
+
+      return `<button class="${btnClass}" data-notif-act="${act.action}" data-notif-id="${item.id}" data-lead-id="${act.leadId || ''}" data-phone="${act.phone || ''}" data-name="${encodeURIComponent(act.name || '')}" data-followup-id="${act.followupId || ''}">${act.label}</button>`;
+    }).join("");
+
+    return `
+      <div class="notif-card ${unreadClass} ${extraCardClass}" id="notif-card-${item.id}">
+        <div class="notif-card-header">
+          <span class="notif-type-tag ${item.badgeClass || 'lead'}">${item.badgeText}</span>
+          <span class="notif-timestamp">${formattedTime}</span>
+        </div>
+        <div class="notif-card-body">
+          <div class="notif-card-title">${item.title}</div>
+          <div class="notif-card-desc">${item.description}</div>
+          ${item.phone ? `<div class="notif-card-meta"><span>📞 ${item.phone}</span></div>` : ''}
+        </div>
+        ${actionButtonsHtml ? `<div class="notif-card-actions">${actionButtonsHtml}</div>` : ''}
+      </div>
+    `;
+  }).join("");
+
+  // Attach button action handlers
+  container.querySelectorAll(".notif-act-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.notifAct;
+      const notifId = btn.dataset.notifId;
+      const leadId = btn.dataset.leadId;
+      const phone = btn.dataset.phone;
+      const name = decodeURIComponent(btn.dataset.name || "Patient");
+      const followupId = btn.dataset.followupId;
+
+      if (action === "openLead") {
+        saveReadNotifId(notifId);
+        toggleNotificationDrawer(false);
+        if (leadId) openLeadActionDrawer(leadId);
+        else switchTab("leads");
+      } else if (action === "dialNumber") {
+        saveReadNotifId(notifId);
+        if (phone) window.open(`tel:${phone}`, "_self");
+      } else if (action === "whatsapp") {
+        saveReadNotifId(notifId);
+        if (phone) {
+          const cleanPhone = phone.replace(/[^0-9]/g, "");
+          const msg = encodeURIComponent(`Hello ${name}, greetings from ${currentHospital} Hospital. Regarding your IVF consultation & scheduled follow-up.`);
+          window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+        }
+      } else if (action === "markRead" || action === "markDone") {
+        saveReadNotifId(notifId);
+        const target = notificationItems.find(n => n.id === notifId);
+        if (target) target.read = true;
+        if (followupId) {
+          // Update followup status in database
+          supabase.from("followups").update({ status: "completed" }).eq("id", followupId).then(() => {});
+        }
+        updateNotificationBadges();
+        renderNotificationItems();
+        showToast("Notification marked as done", "success");
+      }
+    });
+  });
+}
+
+function setupNotificationDrawerUI() {
+  const closeBtn = document.getElementById("closeNotifDrawerBtn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => toggleNotificationDrawer(false));
+  }
+
+  const markAllBtn = document.getElementById("markAllNotifsReadBtn");
+  if (markAllBtn) {
+    markAllBtn.addEventListener("click", () => markAllNotifsAsRead());
+  }
+
+  const refreshBtn = document.getElementById("refreshNotifsBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      loadNotificationsAndReminders();
+      showToast("Refreshed notification feed", "info");
+    });
+  }
+
+  const viewAllCallsBtn = document.getElementById("viewAllCallsShortcutBtn");
+  if (viewAllCallsBtn) {
+    viewAllCallsBtn.addEventListener("click", () => {
+      toggleNotificationDrawer(false);
+      switchTab("calls");
+    });
+  }
+
+  // Filter tabs
+  const tabBtns = document.querySelectorAll(".notif-tab");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach(b => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+      activeNotifFilterTab = btn.dataset.notifTab || "all";
+      renderNotificationItems();
+    });
+  });
+
+  // Close when clicking overlay backdrop
+  const modal = document.getElementById("notificationDrawerModal");
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) toggleNotificationDrawer(false);
+    });
+  }
+}
+
+// Supabase Realtime Subscription across Leads, Followups & Calls
 // =============================================================
 let realtimeChannel = null;
 
@@ -2518,7 +3085,8 @@ function startRealtimeSubscription() {
   }
 
   realtimeChannel = supabase
-    .channel("hospital-live-changes")
+    .channel(`hospital-live-sync-${currentHospital || 'default'}`)
+    // 1. Leads Real-time Events
     .on(
       "postgres_changes",
       {
@@ -2528,11 +3096,37 @@ function startRealtimeSubscription() {
         filter: `hospital_code=eq.${currentHospital}`,
       },
       (payload) => {
-        showToast(`🔔 New lead: ${payload.new.patient_name || 'Patient'}`, "success");
+        const patientName = payload.new.patient_name || 'Patient';
+        showToast(`🔔 New Lead Received: ${patientName}`, "success");
+        playNotificationChime();
+
         liveLeads.unshift(payload.new);
         filteredLeads.unshift(payload.new);
         renderAssignedLeadsTable(filteredLeads);
         loadDashboardData();
+
+        // Push into real-time notification drawer
+        notificationItems.unshift({
+          id: `lead-${payload.new.id}`,
+          rawId: payload.new.id,
+          leadId: payload.new.id,
+          category: "history",
+          type: "lead",
+          badgeText: "New Lead",
+          badgeClass: "lead",
+          title: `New Lead: ${patientName}`,
+          description: `Phone: ${payload.new.primary_phone || 'N/A'} • Source: ${payload.new.lead_source || 'Website'}`,
+          timestamp: payload.new.created_at || new Date().toISOString(),
+          patientName,
+          phone: payload.new.primary_phone,
+          read: false,
+          actions: [
+            { label: "View Profile", action: "openLead", leadId: payload.new.id },
+            { label: "💬 WhatsApp", action: "whatsapp", phone: payload.new.primary_phone, name: patientName }
+          ]
+        });
+        updateNotificationBadges();
+        renderNotificationItems();
       }
     )
     .on(
@@ -2551,6 +3145,83 @@ function startRealtimeSubscription() {
           if (fIdx !== -1) filteredLeads[fIdx] = payload.new;
           renderAssignedLeadsTable(filteredLeads);
         }
+      }
+    )
+    // 2. Follow-ups & Reminders Real-time Events
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "followups",
+        filter: `hospital_code=eq.${currentHospital}`,
+      },
+      (payload) => {
+        const patientName = payload.new.patient_name || "Patient";
+        showToast(`⏰ Scheduled Follow-up: ${patientName}`, "info");
+        playNotificationChime();
+
+        notificationItems.unshift({
+          id: `fu-${payload.new.id}`,
+          rawId: payload.new.id,
+          leadId: payload.new.lead_id,
+          category: "reminders",
+          type: "reminder",
+          badgeText: "Follow-up Reminder",
+          badgeClass: "reminder",
+          title: `Follow-up: ${patientName}`,
+          description: payload.new.notes || "Scheduled clinical patient call",
+          timestamp: payload.new.scheduled_at || payload.new.created_at,
+          patientName,
+          phone: payload.new.phone || "",
+          read: false,
+          actions: [
+            { label: "📞 Call / Lead", action: "openLead", leadId: payload.new.lead_id },
+            { label: "💬 WhatsApp", action: "whatsapp", phone: payload.new.phone, name: patientName },
+            { label: "✔ Done", action: "markDone", notifId: `fu-${payload.new.id}`, followupId: payload.new.id }
+          ]
+        });
+        updateNotificationBadges();
+        renderNotificationItems();
+      }
+    )
+    // 3. Telephony Calls Real-time Events (Incoming / MacroDroid sync)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "calls",
+        filter: `hospital_id=eq.${currentUser?.hospital_id || (currentHospital === "SHH" ? "hosp-shh-fd72cfcc" : (currentHospital === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4"))}`,
+      },
+      (payload) => {
+        const isMissed = (payload.new.status || "").toLowerCase().includes("miss");
+        const callerName = payload.new.patient_name || payload.new.phone_number || "Caller";
+        showToast(isMissed ? `🚨 Missed Call from ${callerName}` : `📞 Telephony Call Logged: ${callerName}`, isMissed ? "error" : "info");
+        playNotificationChime();
+
+        notificationItems.unshift({
+          id: `call-${payload.new.id}`,
+          rawId: payload.new.id,
+          leadId: payload.new.lead_id,
+          category: isMissed ? "calls" : "history",
+          type: "call",
+          badgeText: isMissed ? "Missed Call" : "Received Call",
+          badgeClass: isMissed ? "call" : "history",
+          title: `${isMissed ? '🚨 Missed Call' : '📞 Call Received'}: ${callerName}`,
+          description: `Duration: ${payload.new.duration || 0}s • ${payload.new.notes || 'Telephony Gateway'}`,
+          timestamp: payload.new.created_at || new Date().toISOString(),
+          patientName: callerName,
+          phone: payload.new.phone_number || "",
+          read: false,
+          actions: [
+            { label: "📞 Return Call", action: "dialNumber", phone: payload.new.phone_number },
+            { label: "💬 WhatsApp", action: "whatsapp", phone: payload.new.phone_number, name: callerName },
+            { label: "✔ Read", action: "markRead", notifId: `call-${payload.new.id}` }
+          ]
+        });
+        updateNotificationBadges();
+        renderNotificationItems();
       }
     )
     .subscribe();
@@ -3114,7 +3785,7 @@ function renderAdminTelephony() {
 
     return `
       <tr>
-        <td style="font-size: 12px; color: #64748b;">${formatDisplayDate(c.created_at)}</td>
+        <td style="font-size: 12px; color: #64748b;">${formatDisplayDate(c.started_at || c.created_at)}</td>
         <td style="font-family: monospace; font-weight: 600; color: #0f172a;">${escapeHtml(c.phone_number || "—")}</td>
         <td><span class="badge-pill ${isInc ? 'incoming' : 'outgoing'}">${isInc ? 'Incoming' : 'Outgoing'}</span></td>
         <td><span class="tenant-pill ${meta.badgeClass}">${branchCode}</span> ${escapeHtml(meta.name)}</td>
@@ -3417,6 +4088,89 @@ function initAdminDashboardListeners() {
         renderAdminTelephony();
         showToast(`MacroDroid Webhook test successful! Call recorded from Internal storage/Recordings/Call.`, "success");
       }, 700);
+    });
+  }
+
+  // Batch Recordings Folder Upload
+  const btnUploadFolder = document.getElementById("btnUploadRecordingsFolder");
+  const batchInput = document.getElementById("batchRecordingsInput");
+  const batchProgress = document.getElementById("batchUploadProgress");
+
+  if (btnUploadFolder && batchInput) {
+    btnUploadFolder.addEventListener("click", () => {
+      batchInput.click();
+    });
+
+    batchInput.addEventListener("change", async (e) => {
+      const files = Array.from(e.target.files || []).filter(f => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        return ["m4a", "mp3", "wav", "aac", "ogg", "3gp", "amr"].includes(ext);
+      });
+
+      if (files.length === 0) {
+        showToast("No audio recording files (.m4a, .mp3, etc.) found in the selected folder.", "warning");
+        return;
+      }
+
+      const targetHosp = currentHospital || (adminGlobalScope !== "ALL" ? adminGlobalScope : "SSM");
+      btnUploadFolder.disabled = true;
+      btnUploadFolder.style.opacity = "0.6";
+      if (batchProgress) {
+        batchProgress.style.display = "inline";
+        batchProgress.textContent = `Preparing 0/${files.length}...`;
+      }
+
+      showToast(`Starting direct sync of ${files.length} recording files to Supabase...`, "info");
+
+      let uploaded = 0;
+      let errors = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (batchProgress) {
+          batchProgress.textContent = `Syncing ${i + 1}/${files.length}: ${file.name.slice(0, 24)}...`;
+        }
+
+        try {
+          const filePath = `${targetHosp}/${file.name}`;
+          const { error } = await supabase.storage
+            .from("santasa-recordings")
+            .upload(filePath, file, {
+              upsert: true,
+              contentType: file.type || "audio/mp4"
+            });
+
+          if (error && !error.message?.includes("Duplicate") && !error.message?.includes("already exists")) {
+            console.error(`Error uploading ${file.name}:`, error);
+            errors++;
+          } else {
+            uploaded++;
+          }
+        } catch (err) {
+          console.error(`Failed to upload ${file.name}:`, err);
+          errors++;
+        }
+      }
+
+      btnUploadFolder.disabled = false;
+      btnUploadFolder.style.opacity = "1";
+      if (batchProgress) {
+        batchProgress.textContent = `Synced ${uploaded}/${files.length}`;
+        setTimeout(() => { if (batchProgress) batchProgress.style.display = "none"; }, 4000);
+      }
+
+      // Re-fetch calls to update table
+      const { data: updatedCalls } = await supabase
+        .from("calls")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (updatedCalls) {
+        adminAllCalls = updatedCalls;
+        renderAdminTelephony();
+      }
+
+      showToast(`Synced ${uploaded} call recordings successfully (${errors} errors).`, uploaded > 0 ? "success" : "error");
+      batchInput.value = "";
     });
   }
 

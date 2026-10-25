@@ -4,7 +4,15 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/v1/telephony/mobile-sync/call-log",
+      "destination": "/api/mobile-sync"
+    },
+    {
+      "source": "/api/mobile-sync",
+      "destination": "/api/mobile-sync"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

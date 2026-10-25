@@ -67,11 +67,14 @@
       </div>
 
       <div class="hummatic-nav-right">
-        <!-- Telephony Status Indicator -->
-        <div class="telephony-indicator" title="Hospital Telephony & MacroDroid Mobile Sync Gateway Ready">
-          <span class="telephony-pulse"></span>
-          <span class="telephony-text" id="telephonyStatusText">Telephony: Ready</span>
-        </div>
+        <!-- Header Notifications & Reminders Bell -->
+        <button class="header-notification-btn" id="headerNotificationBtn" title="Notifications & Reminders" aria-label="Open Notifications Drawer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <span class="header-notif-badge hidden" id="headerNotifBadge">0</span>
+        </button>
 
         <!-- Executive Profile & Hospital Tenant Menu -->
         <div class="hummatic-user-dropdown" id="userDropdownWrapper">
@@ -621,9 +624,10 @@
                 </button>
                 <div class="card-attached-divider"></div>
                 <div class="card-attached-title-group">
-                  <div class="section-heading-teal" style="margin: 0; padding: 0;">
+                  <div class="section-heading-teal" style="margin: 0; padding: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <span class="teal-bar"></span>
                     <h2 id="updateLeadPageTitle">Update Client Lead</h2>
+                    <span id="updateLeadCallFrequencyPill" class="badge-pill incoming" style="font-size: 12px; padding: 3px 10px; font-weight: 600; display: none;"></span>
                   </div>
                   <p class="form-subtitle" style="margin: 2px 0 0 0;">Review &amp; update patient consultation, treatment, and outcome details</p>
                 </div>
@@ -670,7 +674,10 @@
                 </div>
 
                 <div class="form-group">
-                  <label>Contact Number <span class="req">*</span></label>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label style="margin-bottom: 0;">Contact Number <span class="req">*</span></label>
+                    <span id="updateContactCallFrequencyBadge" class="badge-pill" style="font-size: 11px; padding: 2px 8px; font-weight: 600; background: #e0f2fe; color: #0284c7; display: none;"></span>
+                  </div>
                   <input type="tel" id="updateContactNumber" class="hummatic-input" required placeholder="Enter Contact Number" />
                 </div>
                 <div class="form-group">
@@ -772,9 +779,23 @@
               </div>
 
               <!-- Card 3: IVR Call Details -->
-              <div class="form-section-header" style="margin-top: 1.5rem;">
-                <span class="teal-bar"></span>
-                <h3>IVR Call Details</h3>
+              <div class="form-section-header" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="teal-bar"></span>
+                  <h3>IVR Call Details</h3>
+                </div>
+                <!-- Call Activity Breakdown Summary -->
+                <div id="updateCallMetricsBadges" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <span id="updateBadgeIncomingCalls" class="badge-pill incoming" style="font-size: 11px; padding: 2px 8px; font-weight: 600;">
+                    📞 0 Incoming
+                  </span>
+                  <span id="updateBadgeOutgoingCalls" class="badge-pill outgoing" style="font-size: 11px; padding: 2px 8px; font-weight: 600;">
+                    📱 0 Outgoing
+                  </span>
+                  <span id="updateBadgeTotalCalls" class="badge-pill completed" style="font-size: 11px; padding: 2px 8px; font-weight: 600; background: #f1f5f9; color: #334155;">
+                    Total: 0
+                  </span>
+                </div>
               </div>
 
               <div class="form-grid-2col">
@@ -799,9 +820,26 @@
                   </select>
                 </div>
 
-                <div class="form-group full-width" id="updateAudioContainer">
-                  <label>Call Recording</label>
-                  <div class="audio-player-box" id="updateAudioPlayerBox" style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1rem;">
+                <div class="form-group full-width" id="updateAudioContainer" style="margin-top: 0.5rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                    <label style="font-weight: 600; color: #0f172a; margin-bottom: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                      <span>🎙️ Patient Call Recordings History</span>
+                      <span id="updateCallsIncomingCount" class="badge-pill incoming" style="font-size: 11px; padding: 2px 7px;">0 In</span>
+                      <span id="updateCallsOutgoingCount" class="badge-pill outgoing" style="font-size: 11px; padding: 2px 7px;">0 Out</span>
+                      <span id="updateCallsCount" class="badge-pill" style="background: #e0f2fe; color: #0369a1; font-size: 11px; padding: 2px 7px;">0 recorded</span>
+                    </label>
+                    <span id="updateCallsPhoneDisplay" style="font-size: 12px; font-family: monospace; color: #0d9488; font-weight: 600;"></span>
+                  </div>
+
+                  <!-- Dynamic Multi-Call Audio Recordings List -->
+                  <div id="updateMultiRecordingsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding: 2px;">
+                    <div style="font-size: 12px; color: #64748b; font-style: italic; padding: 8px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                      Loading call recordings for this patient...
+                    </div>
+                  </div>
+
+                  <!-- Fallback single player box -->
+                  <div class="audio-player-box" id="updateAudioPlayerBox" style="background: #f8fafc; padding: 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; display: none; align-items: center; gap: 1rem; margin-top: 6px;">
                     <audio id="updateAudioPlayer" controls style="width: 100%; height: 36px;"></audio>
                   </div>
                 </div>
@@ -1256,9 +1294,18 @@
 
             <!-- Recorded Calls Table -->
             <div class="content-card" style="margin-top: 1.5rem;">
-              <div class="section-heading-teal">
-                <span class="teal-bar"></span>
-                <h2>Network Call Recordings Audit</h2>
+              <div class="section-heading-teal" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="teal-bar"></span>
+                  <h2>Network Call Recordings Audit</h2>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <input type="file" id="batchRecordingsInput" webkitdirectory directory multiple accept=".m4a,.mp3,.wav,.aac,.ogg,.3gp" style="display: none;" />
+                  <button type="button" class="btn-demo-pill" id="btnUploadRecordingsFolder" style="padding: 7px 14px; font-size: 12px; background: #0f766e; color: white; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    📁 Sync / Upload Recordings Folder
+                  </button>
+                  <span id="batchUploadProgress" style="font-size: 12px; color: #0f766e; font-weight: 600; display: none;"></span>
+                </div>
               </div>
               <div class="table-responsive">
                 <table class="hummatic-table">
@@ -1869,6 +1916,81 @@
           <span>256-Bit Encrypted Session • Strict Hospital Data Isolation</span>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- MODAL: Real-Time Notifications & Reminders Drawer -->
+  <!-- ================================================================ -->
+  <div id="notificationDrawerModal" class="notification-drawer-overlay hidden" aria-modal="true" role="dialog">
+    <div class="notification-drawer-card">
+      <div class="notif-drawer-header">
+        <div class="notif-drawer-title-group">
+          <div class="notif-drawer-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="notif-drawer-title">Notifications & Reminders</h3>
+            <span class="notif-drawer-subtitle" id="notifDrawerSubtitle">Live hospital updates & scheduled calls</span>
+          </div>
+        </div>
+        <div class="notif-drawer-header-actions">
+          <button class="notif-header-btn" id="markAllNotifsReadBtn" title="Mark all as read">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span>Mark all read</span>
+          </button>
+          <button class="notif-header-close-btn" id="closeNotifDrawerBtn" title="Close drawer" aria-label="Close notifications">✕</button>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="notif-tabs-bar" role="tablist">
+        <button class="notif-tab active" data-notif-tab="all" role="tab" aria-selected="true">
+          <span>All</span>
+          <span class="notif-tab-badge" id="notifTabAllBadge">0</span>
+        </button>
+        <button class="notif-tab" data-notif-tab="reminders" role="tab" aria-selected="false">
+          <span>Reminders</span>
+          <span class="notif-tab-badge" id="notifTabRemindersBadge">0</span>
+        </button>
+        <button class="notif-tab" data-notif-tab="calls" role="tab" aria-selected="false">
+          <span>Calls</span>
+          <span class="notif-tab-badge" id="notifTabCallsBadge">0</span>
+        </button>
+        <button class="notif-tab" data-notif-tab="history" role="tab" aria-selected="false">
+          <span>History</span>
+          <span class="notif-tab-badge" id="notifTabHistoryBadge">0</span>
+        </button>
+      </div>
+
+      <!-- Realtime Status Banner -->
+      <div class="notif-realtime-status-bar">
+        <span class="notif-live-dot"></span>
+        <span class="notif-live-text">Real-time sync active • Auto-refreshes on incoming leads & calls</span>
+      </div>
+
+      <!-- Notifications List Container -->
+      <div class="notif-items-list" id="notifItemsContainer">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="notif-drawer-footer">
+        <button class="btn btn-secondary btn-sm" id="refreshNotifsBtn" style="font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          <span>Refresh Feed</span>
+        </button>
+        <button class="btn btn-outline-teal btn-sm" id="viewAllCallsShortcutBtn" style="font-size: 0.82rem;">
+          Go to Telephony Calls →
+        </button>
+      </div>
     </div>
   </div>
 
