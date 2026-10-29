@@ -341,10 +341,11 @@ function updateHospitalBranding(hospitalCode, hospitalName, executiveName) {
   }
 
   if (currentUser?.role === "SUPER_ADMIN") {
-    if (welcomeTitle)       welcomeTitle.textContent = `Welcome ${executiveName || "Super Administrator"} (Network Admin)`;
+    const hospLabel = currentHospital === "SSM" ? "SSM Hospital" : (currentHospital === "SHH" ? "Santasa Hassan Hospital" : (currentHospital === "SMH" ? "Santasa Mysore Hospital" : "Multi-Hospital Network"));
+    if (welcomeTitle)       welcomeTitle.textContent = `Welcome ${executiveName || "Super Administrator"} (${hospLabel})`;
     if (profileName)        profileName.textContent  = executiveName || "Super Administrator";
-    if (currentHospDisplay) currentHospDisplay.textContent = "Multi-Hospital Network";
-    document.title = "Santasa & SSM Hospital CRM — Super Admin Portal";
+    if (currentHospDisplay) currentHospDisplay.textContent = hospLabel;
+    document.title = `Santasa & SSM Hospital CRM — Super Admin (${hospLabel})`;
     return;
   }
 
@@ -600,6 +601,7 @@ let phoneCallCountsMap = {};
 
 function updatePhoneCallCounts(callsList) {
   if (!Array.isArray(callsList)) return;
+  phoneCallCountsMap = {}; // Reset counts to prevent inflation on refresh
   callsList.forEach(c => {
     const raw = c.phone_number || c.normalized_phone || "";
     const core10 = raw.replace(/\D/g, "").slice(-10);
@@ -626,9 +628,16 @@ async function loadLeadsData() {
   }
 
   try {
+    const hospId = currentHospital === "SHH" ? "hosp-shh-fd72cfcc" : (currentHospital === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4");
+    let callsQuery = supabase.from("calls").select("phone_number, normalized_phone, direction");
+    const isSuperAdmin = currentUser && (currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN");
+    if (!isSuperAdmin || currentHospital !== "ALL") {
+      callsQuery = callsQuery.eq("hospital_id", hospId);
+    }
+
     const [leads, callsRes] = await Promise.all([
       apiRequest("/leads?limit=150").catch(() => []),
-      supabase.from("calls").select("phone_number, normalized_phone, direction").limit(500)
+      callsQuery.limit(1000)
     ]);
     if (callsRes && callsRes.data) {
       updatePhoneCallCounts(callsRes.data);
@@ -1023,7 +1032,8 @@ async function openUpdateClientLead(leadId) {
     (async () => {
       let patientCalls = [];
       try {
-        let query = supabase.from("calls").select("*");
+        const targetHospId = lead.hospital_id || (lead.hospital_code === "SHH" ? "hosp-shh-fd72cfcc" : (lead.hospital_code === "SMH" ? "hosp-smh-42546563" : "hosp-ssm-c13526e4"));
+        let query = supabase.from("calls").select("*").eq("hospital_id", targetHospId);
         if (corePhone && corePhone.length >= 10) {
           query = query.or(`phone_number.ilike.%${corePhone}%,normalized_phone.ilike.%${corePhone}%,lead_id.eq.${lead.id}`);
         } else {
@@ -1746,6 +1756,12 @@ function clearUserDataAndDOM() {
   filteredReviews = [];
   currentSelectedLead = null;
 
+  if (followupReminderInterval) {
+    clearInterval(followupReminderInterval);
+    followupReminderInterval = null;
+  }
+  notifiedFollowupIds.clear();
+
   if (realtimeChannel) {
     try {
       supabase.removeChannel(realtimeChannel);
@@ -1916,10 +1932,26 @@ async function switchHospitalTenant(hosp, email, password = "Executive@2026!") {
     showToast("Access restricted: Hospital switching is only available to Super Administrators.", "error");
     return;
   }
-  showToast(`Switching context to ${hosp}...`, "info");
+  
+  currentHospital = hosp || "SSM";
+  const hospName = currentHospital === "SSM" ? "SSM Hospital" : (currentHospital === "SHH" ? "Santasa Hassan Hospital" : "Santasa Mysore Hospital");
+  showToast(`Switched active workspace to: ${hospName}`, "success");
+  
   document.getElementById("userDropdownMenu")?.classList.add("hidden");
-  clearUserDataAndDOM();
-  await loginUser(email, password);
+  
+  // Update header branding & labels without losing Super Admin status
+  updateHospitalBranding(currentHospital, hospName, currentUser.full_name);
+  
+  // Restart real-time listener scoped to new hospital
+  startRealtimeSubscription();
+  
+  // Refresh current page views
+  await Promise.all([
+    loadDashboardData().catch(() => {}),
+    loadLeadsData().catch(() => {}),
+    loadCallNotifications().catch(() => {}),
+    loadReviews().catch(() => {})
+  ]);
 }
 
 // =============================================================
@@ -2841,6 +2873,128 @@ function playNotificationChime() {
   }
 }
 
+// =============================================================
+// Web Push Notifications & Follow-up Reminders Engine
+// =============================================================
+let followupReminderInterval = null;
+const notifiedFollowupIds = new Set();
+
+async function requestPushNotificationPermission() {
+  if (!("Notification" in window)) {
+    console.info("Desktop notifications are not supported on this browser.");
+    return false;
+  }
+  if (Notification.permission === "granted") {
+    updatePushNotificationButton(true);
+    return true;
+  }
+  if (Notification.permission !== "denied") {
+    try {
+      const permission = await Notification.requestPermission();
+      const granted = permission === "granted";
+      updatePushNotificationButton(granted);
+      if (granted) {
+        showToast("🔔 Desktop push notifications enabled for reminders & calls!", "success");
+        sendPushNotification("Hospital CRM Alerts Active", {
+          body: "You will now receive desktop notifications for live calls and reminders."
+        });
+      }
+      return granted;
+    } catch (e) {
+      console.warn("Could not request notification permission:", e);
+      return false;
+    }
+  }
+  updatePushNotificationButton(false);
+  return false;
+}
+
+function updatePushNotificationButton(isGranted) {
+  const btn = document.getElementById("enablePushNotifsBtn");
+  if (btn) {
+    if (isGranted) {
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Push Alerts Active</span>`;
+      btn.style.color = "#059669";
+    } else {
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Enable Push</span>`;
+      btn.style.color = "#0284c7";
+    }
+  }
+}
+
+function sendPushNotification(title, options = {}) {
+  if (!("Notification" in window) || Notification.permission !== "granted") {
+    return;
+  }
+  try {
+    const isSSM = currentHospital === "SSM";
+    const iconUrl = isSSM ? "/ssm-logo.png" : "/santasa-logo.png";
+    const notification = new Notification(title, {
+      icon: iconUrl,
+      badge: iconUrl,
+      requireInteraction: false,
+      silent: false,
+      ...options
+    });
+
+    notification.onclick = (e) => {
+      e.preventDefault();
+      window.focus();
+      if (options.data?.tab) switchTab(options.data.tab);
+      if (options.data?.leadId) openUpdateClientLead(options.data.leadId);
+      notification.close();
+    };
+  } catch (err) {
+    console.warn("Error displaying notification:", err);
+  }
+}
+
+async function checkUpcomingFollowups() {
+  if (!currentUser) return;
+  try {
+    const hospCode = currentHospital;
+    const now = new Date();
+    // Look up followups due between start of today and next 10 minutes
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const tenMinFromNow = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+
+    let query = supabase
+      .from("followups")
+      .select("id, lead_id, patient_name, phone, scheduled_at, notes, hospital_code")
+      .gte("scheduled_at", startOfToday)
+      .lte("scheduled_at", tenMinFromNow);
+
+    const isSuperAdmin = currentUser.role === "SUPER_ADMIN" || currentUser.role === "ADMIN";
+    if (!isSuperAdmin || hospCode !== "ALL") {
+      query = query.eq("hospital_code", hospCode);
+    }
+
+    const { data, error } = await query;
+    if (error || !Array.isArray(data)) return;
+
+    data.forEach(fu => {
+      if (!notifiedFollowupIds.has(fu.id)) {
+        notifiedFollowupIds.add(fu.id);
+        const name = fu.patient_name || "Patient";
+        const timeStr = new Date(fu.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        sendPushNotification(`⏰ Follow-up Reminder (${timeStr})`, {
+          body: `${name} (${fu.phone || 'No phone'}): ${fu.notes || 'Follow-up call scheduled now.'}`,
+          data: { tab: "calls", leadId: fu.lead_id }
+        });
+        playNotificationChime();
+      }
+    });
+  } catch (err) {
+    console.warn("Followup reminder check failed:", err);
+  }
+}
+
+function startFollowupReminderMonitor() {
+  if (followupReminderInterval) clearInterval(followupReminderInterval);
+  checkUpcomingFollowups();
+  followupReminderInterval = setInterval(checkUpcomingFollowups, 60000); // Check every 60 seconds
+}
+
 function toggleNotificationDrawer(forceOpen = null) {
   const drawer = document.getElementById("notificationDrawerModal");
   if (!drawer) return;
@@ -3116,6 +3270,16 @@ function setupNotificationDrawerUI() {
     closeBtn.addEventListener("click", () => toggleNotificationDrawer(false));
   }
 
+  const enablePushBtn = document.getElementById("enablePushNotifsBtn");
+  if (enablePushBtn) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      updatePushNotificationButton(true);
+    }
+    enablePushBtn.addEventListener("click", async () => {
+      await requestPushNotificationPermission();
+    });
+  }
+
   const markAllBtn = document.getElementById("markAllNotifsReadBtn");
   if (markAllBtn) {
     markAllBtn.addEventListener("click", () => markAllNotifsAsRead());
@@ -3166,6 +3330,9 @@ function setupNotificationDrawerUI() {
 let realtimeChannel = null;
 
 function startRealtimeSubscription() {
+  startFollowupReminderMonitor();
+  requestPushNotificationPermission();
+
   if (realtimeChannel) {
     try { supabase.removeChannel(realtimeChannel); } catch (e) {}
     realtimeChannel = null;
@@ -3186,6 +3353,10 @@ function startRealtimeSubscription() {
         const patientName = payload.new.patient_name || 'Patient';
         showToast(`🔔 New Lead Received: ${patientName}`, "success");
         playNotificationChime();
+        sendPushNotification(`🔔 New Lead: ${patientName}`, {
+          body: `Hospital: ${currentHospital} | Phone: ${payload.new.primary_phone || 'N/A'} | Source: ${payload.new.lead_source || 'Website'}`,
+          data: { tab: "leads", leadId: payload.new.id }
+        });
 
         liveLeads.unshift(payload.new);
         filteredLeads.unshift(payload.new);
@@ -3247,6 +3418,10 @@ function startRealtimeSubscription() {
         const patientName = payload.new.patient_name || "Patient";
         showToast(`⏰ Scheduled Follow-up: ${patientName}`, "info");
         playNotificationChime();
+        sendPushNotification(`⏰ Follow-up Reminder: ${patientName}`, {
+          body: payload.new.notes || "Scheduled clinical patient call due",
+          data: { tab: "calls", leadId: payload.new.lead_id }
+        });
 
         notificationItems.unshift({
           id: `fu-${payload.new.id}`,
@@ -3286,6 +3461,10 @@ function startRealtimeSubscription() {
         const callerName = payload.new.patient_name || payload.new.phone_number || "Caller";
         showToast(isMissed ? `🚨 Missed Call from ${callerName}` : `📞 Telephony Call Logged: ${callerName}`, isMissed ? "error" : "info");
         playNotificationChime();
+        sendPushNotification(isMissed ? `🚨 Missed Call from ${callerName}` : `📞 Telephony Call: ${callerName}`, {
+          body: `Hospital: ${currentHospital} | Duration: ${payload.new.duration || 0}s | ${payload.new.status || 'Received'}`,
+          data: { tab: "calls" }
+        });
 
         notificationItems.unshift({
           id: `call-${payload.new.id}`,
